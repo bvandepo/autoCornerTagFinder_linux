@@ -42,10 +42,8 @@ using std::ifstream;
 // Defines
 #define MAX_CONTOUR_APPROX  7
 
-
-//Ming #define VIS 1
-#define VIS 0
-// Turn on visualization
+bool VisualizeResults=true;  // Turn on visualization
+bool WaitBetweenImages=true; // wait for the user to press a key between image
 #define TIMER 0					// Elapse the function duration times
 
 
@@ -265,12 +263,12 @@ int cvFindChessboardCorners3( const void* arr, CvSize pattern_size,
 #endif
 
 //VISUALIZATION--------------------------------------------------------------
-#if VIS
+if (VisualizeResults) {
  		cvNamedWindow( "Original Image", 1 );
 		cvShowImage( "Original Image", img);
 		//cvSaveImage("pictureVis/OrigImg.png", img);
-		cvWaitKey(0);
-#endif
+        if (WaitBetweenImages) cvWaitKey(0);
+}
 //END------------------------------------------------------------------------
 
 
@@ -302,12 +300,12 @@ int cvFindChessboardCorners3( const void* arr, CvSize pattern_size,
 #endif
 
 //VISUALIZATION--------------------------------------------------------------
-#if VIS
+if (VisualizeResults) {
 		cvNamedWindow( "After adaptive Threshold (and Dilation)", 1 );
 		cvShowImage( "After adaptive Threshold (and Dilation)", thresh_img);
 		//cvSaveImage("pictureVis/afterDilation.png", thresh_img);
-		cvWaitKey(0);
-#endif
+        if (WaitBetweenImages) cvWaitKey(0);
+}
 //END------------------------------------------------------------------------ 
   
 
@@ -332,10 +330,12 @@ int cvFindChessboardCorners3( const void* arr, CvSize pattern_size,
 #endif
 
 //VISUALIZATION--------------------------------------------------------------
-#if VIS
+        IplImage* imageCopy2;
+        IplImage* imageCopy22;
+if (VisualizeResults) {
   		cvNamedWindow( "all found quads per dilation run", 1 );
-		IplImage* imageCopy2 = cvCreateImage( cvGetSize(thresh_img), 8, 1 );
-		IplImage* imageCopy22 = cvCreateImage( cvGetSize(thresh_img), 8, 3 );
+        imageCopy2 = cvCreateImage( cvGetSize(thresh_img), 8, 1 );
+        imageCopy22 = cvCreateImage( cvGetSize(thresh_img), 8, 3 );
 		cvCopy( thresh_img, imageCopy2);
 		cvCvtColor( imageCopy2, imageCopy22, CV_GRAY2BGR );
 
@@ -358,8 +358,8 @@ int cvFindChessboardCorners3( const void* arr, CvSize pattern_size,
 		}
 		cvShowImage( "all found quads per dilation run", imageCopy22);
 		//cvSaveImage("pictureVis/allFoundQuads.png", imageCopy22);
-		cvWaitKey(0);
-#endif
+        if (WaitBetweenImages) cvWaitKey(0);
+}
 //END------------------------------------------------------------------------
 
 		
@@ -369,7 +369,7 @@ int cvFindChessboardCorners3( const void* arr, CvSize pattern_size,
         CV_CALL( mrFindQuadNeighbors2( quads, quad_count, dilations));
 		
 //VISUALIZATION--------------------------------------------------------------
-#if VIS
+if (VisualizeResults) {
 		cvNamedWindow( "quads with neighbors", 1 );
 		IplImage* imageCopy3 = cvCreateImage( cvGetSize(thresh_img), 8, 3 );
 		cvCopy( imageCopy22, imageCopy3);
@@ -392,8 +392,8 @@ int cvFindChessboardCorners3( const void* arr, CvSize pattern_size,
 		}
 		cvShowImage( "quads with neighbors", imageCopy3);
 		//cvSaveImage("pictureVis/allFoundNeighbors.png", imageCopy3);
-		cvWaitKey(0);
-#endif
+        if (WaitBetweenImages) cvWaitKey(0);
+}
 //END------------------------------------------------------------------------
 
 
@@ -442,7 +442,7 @@ int cvFindChessboardCorners3( const void* arr, CvSize pattern_size,
 				
 
 //VISUALIZATION--------------------------------------------------------------
-#if VIS
+if (VisualizeResults) {
 				// display all corners in INCREASING ROW AND COLUMN ORDER
 				cvNamedWindow( "Corners in increasing order", 1 );
 				IplImage* imageCopy11 = cvCreateImage( cvGetSize(thresh_img), 8, 3 );
@@ -483,14 +483,14 @@ int cvFindChessboardCorners3( const void* arr, CvSize pattern_size,
 										}
 										cvShowImage( "Corners in increasing order", imageCopy11);
 										//cvSaveImage("pictureVis/CornersIncreasingOrder.tif", imageCopy11);
-										//cvWaitKey(0);
+                                        //if (WaitBetweenImages) cvWaitKey(0);
 									}
 								}
 							}
 						}
 				}
-				cvWaitKey(0);
-#endif
+                if (WaitBetweenImages) cvWaitKey(0);
+}
 //END------------------------------------------------------------------------
 
 	
@@ -561,9 +561,10 @@ int cvFindChessboardCorners3( const void* arr, CvSize pattern_size,
                      thresh_img->rows-1), CV_RGB(255,255,255), 3, 8);
 
 //VISUALIZATION--------------------------------------------------------------
-#if VIS
+        IplImage* imageCopy23;
+if (VisualizeResults) {
 		cvNamedWindow( "PART2: Starting Point", 1 );
-		IplImage* imageCopy23 = cvCreateImage( cvGetSize(thresh_img), 8, 3 );
+        imageCopy23 = cvCreateImage( cvGetSize(thresh_img), 8, 3 );
 		cvCvtColor( thresh_img, imageCopy23, CV_GRAY2BGR );
 		
 		CvPoint *pt = new CvPoint[4];
@@ -587,8 +588,8 @@ int cvFindChessboardCorners3( const void* arr, CvSize pattern_size,
 
 		cvShowImage( "PART2: Starting Point", imageCopy23);
 		cvSaveImage("pictureVis/part2Start.png", imageCopy23);
-		cvWaitKey(0);
-#endif
+        if (WaitBetweenImages) cvWaitKey(0);
+}
 //END------------------------------------------------------------------------
 
 
@@ -598,7 +599,7 @@ int cvFindChessboardCorners3( const void* arr, CvSize pattern_size,
 			
 
 //VISUALIZATION--------------------------------------------------------------
-#if VIS
+if (VisualizeResults) {
 		//draw on top of previous image
 		for( int kkk = 0; kkk < quad_count; kkk++ )
 		{
@@ -665,8 +666,8 @@ int cvFindChessboardCorners3( const void* arr, CvSize pattern_size,
 
 		cvShowImage( "PART2: Starting Point", imageCopy23);
 		cvSaveImage("pictureVis/part2StartAndNewQuads.png", imageCopy23);
-		cvWaitKey(0);
-#endif
+        if (WaitBetweenImages) cvWaitKey(0);
+}
 //END------------------------------------------------------------------------
 
 		
@@ -686,7 +687,7 @@ int cvFindChessboardCorners3( const void* arr, CvSize pattern_size,
 			
 
 //VISUALIZATION--------------------------------------------------------------
-#if VIS
+if (VisualizeResults) {
 			if( feedBack == -1)
 			{
 				CvCBQuad* remember_quad;
@@ -709,7 +710,7 @@ int cvFindChessboardCorners3( const void* arr, CvSize pattern_size,
 					cvLine( imageCopy23, pt[3], pt[0], CV_RGB(255,0,0), 2, 8 );
 				}
 
-				cvWaitKey(0);
+                if (WaitBetweenImages) cvWaitKey(0);
 				// also draw the corner to which it is connected
 				// Remember it is not yet completely linked!!!
 				for( int kkk = 0; kkk < max_count; kkk++ )
@@ -738,9 +739,9 @@ int cvFindChessboardCorners3( const void* arr, CvSize pattern_size,
 				}
 				cvShowImage( "PART2: Starting Point", imageCopy23);
 				cvSaveImage("pictureVis/part2StartAndSelectedQuad.png", imageCopy23);
-				cvWaitKey(0);
+                if (WaitBetweenImages) cvWaitKey(0);
 			}
-#endif
+}
 //END------------------------------------------------------------------------
 
 

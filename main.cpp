@@ -73,6 +73,14 @@ int main( int argc, char** argv )
 	input_filename					= "pictures.txt";
 	//input_filename					= "myVideo2.avi";
 
+
+    cout<<"FindCorners.exe modified by BVDP"<<"\n";
+     cout << __DATE__ << endl << __TIME__ << endl;
+    cout<<"app launched via: ";
+    for (int j=0;j<argc;j++)
+        cout<<argv[j]<<" ";
+    cout<<"\n";
+
 	// Create error message file
 	ofstream error("outputImages/error.txt");
 
@@ -122,7 +130,6 @@ int main( int argc, char** argv )
 	// Close error message file
 	error.close();
 
-
 	// Figure out what kind of image input needs to be prepared
 	if( input_filename )
 	{
@@ -140,18 +147,15 @@ int main( int argc, char** argv )
 		// Open a live video stream
 		capture = cvCreateCameraCapture(0);
 
-
 	// Nothing could be opened -> error
 	if( !capture && !f )
 		return fprintf( stderr, "Could not initialize video capture\n" ), -2;
-
 	
 	// Allocate memory
 	elem_size = board_size.width*board_size.height*sizeof(image_points_buf[0]);
 	storage = cvCreateMemStorage( MAX( elem_size*4, 1 << 16 ));
 	image_points_buf = (CvPoint2D32f*)cvAlloc( elem_size );
 	image_points_seq = cvCreateSeq( 0, sizeof(CvSeq), elem_size, storage );
-
 
 	// For loop which goes through all images specified above
 	for(int j = 1;; j++)
@@ -172,9 +176,11 @@ int main( int argc, char** argv )
 			{
 				if( imagename[0] == '#' )
 					continue;
-				// Load as BGR 3 channel image
-				view = cvLoadImage( imagename, 1 );
-				// Currently the following file formats are supported: 
+                cout<<"attempt to load "<< imagename <<"\n";
+
+                // Load as BGR 3 channel image
+                view = cvLoadImage( imagename, 1 );
+                // Currently the following file formats are supported:
 				// Windows bitmaps				BMP, DIB
 				// JPEG files					JPEG, JPG, JPE
 				// Portable Network Graphics	PNG
@@ -200,20 +206,17 @@ int main( int argc, char** argv )
 			}
 		}
 
-		
 		// If no more images are to be processed -> break
 		if( !view)
-		{
+        {
 			break;
 		}
-
 		// If esc key was pressed -> break
 		int key = cvWaitKey(10);
 		if( key == 27)
 		{
 			break;
-		}
-
+        }
 		img_size = cvGetSize(view);
 		
 
@@ -226,7 +229,7 @@ int main( int argc, char** argv )
 		}
 		else
 		{
-			found = cvFindChessboardCorners3( view, board_size,
+            found = cvFindChessboardCorners3( view, board_size,
 					image_points_buf, &count, min_number_of_corners );
 		}
 
@@ -234,9 +237,9 @@ int main( int argc, char** argv )
 			break;
 		cvReleaseImage( &view );
 	}
-
 	if( capture )
 		cvReleaseCapture( &capture );
-	
+    cout<<"return value"<< found<<"\n";
+
 	return found;
 }
