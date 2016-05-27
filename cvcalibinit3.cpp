@@ -33,6 +33,7 @@ If you use this code, please cite the following articles:
 #include <opencv.hpp>
 #include <opencv2/core/internal.hpp>
 
+
 #include <time.h>
 #include <fstream>
 using namespace std;
@@ -44,7 +45,7 @@ using std::ifstream;
 
 bool VisualizeResults=true;  // Turn on visualization
 bool WaitBetweenImages=true; // wait for the user to press a key between image
-#define TIMER 0					// Elapse the function duration times
+bool SaveTimerInfo=true; // Elapse the function duration times
 
 
 // Definition Contour Struct
@@ -122,10 +123,11 @@ int cvFindChessboardCorners3( const void* arr, CvSize pattern_size,
                              int min_number_of_corners )
 {
 //START TIMER
-#if TIMER
-	ofstream FindChessboardCorners2;
-    time_t  start_time = clock();
-#endif
+    ofstream FindChessboardCorners2;
+    time_t  start_time;
+    if (SaveTimerInfo){
+        start_time = clock();
+    }
 
 	// PART 0: INITIALIZATION
 	//-----------------------------------------------------------------------
@@ -231,11 +233,12 @@ int cvFindChessboardCorners3( const void* arr, CvSize pattern_size,
     }
 	
 // EVALUATE TIMER
-#if TIMER
-	float time0_1 = (float) (clock() - start_time) / CLOCKS_PER_SEC;
-	FindChessboardCorners2.open("timer/FindChessboardCorners2.txt", ofstream::app);
-	FindChessboardCorners2 << "Time 0.1 for cvFindChessboardCorners2 was " << time0_1 << " seconds." << endl;
-#endif
+    float time0_1;
+    if(SaveTimerInfo){
+        time0_1 = (float) (clock() - start_time) / CLOCKS_PER_SEC;
+        FindChessboardCorners2.open("timer/FindChessboardCorners2.txt", ofstream::app);
+        FindChessboardCorners2 << "Time 0.1 for cvFindChessboardCorners2 was " << time0_1 << " seconds." << endl;
+    }
 
 	// For image binarization (thresholding)
     // we use an adaptive threshold with a gaussian mask
@@ -257,10 +260,11 @@ int cvFindChessboardCorners3( const void* arr, CvSize pattern_size,
 		cvCopy( thresh_img_save, thresh_img);
 		
 // EVALUATE TIMER
-#if TIMER
-		float time0_2 = (float) (clock() - start_time) / CLOCKS_PER_SEC;
-		FindChessboardCorners2 << "Time 0.2 for cvFindChessboardCorners2 was " << time0_2 << " seconds." << endl;
-#endif
+        float time0_2;
+        if(SaveTimerInfo){
+            time0_2 = (float) (clock() - start_time) / CLOCKS_PER_SEC;
+            FindChessboardCorners2 << "Time 0.2 for cvFindChessboardCorners2 was " << time0_2 << " seconds." << endl;
+        }
 
 //VISUALIZATION--------------------------------------------------------------
 if (VisualizeResults) {
@@ -294,10 +298,11 @@ if (VisualizeResults) {
 			cvDilate( thresh_img, thresh_img, kernel2, 1);
 
 // EVALUATE TIMER
-#if TIMER
-		float time0_3 = (float) (clock() - start_time) / CLOCKS_PER_SEC;
-		FindChessboardCorners2 << "Time 0.3 for cvFindChessboardCorners2 was " << time0_3 << " seconds." << endl;
-#endif
+        float time0_3;
+        if(SaveTimerInfo){
+            time0_3 = (float) (clock() - start_time) / CLOCKS_PER_SEC;
+            FindChessboardCorners2 << "Time 0.3 for cvFindChessboardCorners2 was " << time0_3 << " seconds." << endl;
+        }
 
 //VISUALIZATION--------------------------------------------------------------
 if (VisualizeResults) {
@@ -324,10 +329,11 @@ if (VisualizeResults) {
             continue;
 
 // EVALUATE TIMER
-#if TIMER
-		float time0_4 = (float) (clock() - start_time) / CLOCKS_PER_SEC;
-		FindChessboardCorners2 << "Time 0.4 for cvFindChessboardCorners2 was " << time0_4 << " seconds." << endl;
-#endif
+        float time0_4 ;
+        if(SaveTimerInfo){
+            time0_4 = (float) (clock() - start_time) / CLOCKS_PER_SEC;
+            FindChessboardCorners2 << "Time 0.4 for cvFindChessboardCorners2 was " << time0_4 << " seconds." << endl;
+        }
 
 //VISUALIZATION--------------------------------------------------------------
         IplImage* imageCopy2;
@@ -386,6 +392,7 @@ if (VisualizeResults) {
 				{
 					pt.x = (int)(print_quad2->corners[kkkk]->pt.x);
 					pt.y = (int)(print_quad2->corners[kkkk]->pt.y);
+                    //display small red circles at intersections of quads
 					cvCircle( imageCopy3, pt, 3, color, 1, line_type, scale);
 				}
 			}
@@ -515,11 +522,11 @@ if (VisualizeResults) {
 	
 
 // EVALUATE TIMER
-#if TIMER
-	float time1 = (float) (clock() - start_time) / CLOCKS_PER_SEC;
-	FindChessboardCorners2.open("timer/FindChessboardCorners2.txt", ofstream::app);
-	FindChessboardCorners2 << "Time 1 for cvFindChessboardCorners2 was " << time1 << " seconds." << endl;
-#endif
+    if (SaveTimerInfo){
+        float time1 = (float) (clock() - start_time) / CLOCKS_PER_SEC;
+        FindChessboardCorners2.open("timer/FindChessboardCorners2.txt", ofstream::app);
+        FindChessboardCorners2 << "Time 1 for cvFindChessboardCorners2 was " << time1 << " seconds." << endl;
+    }
 
 	// If enough corners have been found already, then there is no need for PART 2 ->EXIT
 	found = mrWriteCorners( output_quad_group, max_count, pattern_size, min_number_of_corners);
@@ -757,7 +764,7 @@ if (VisualizeResults) {
 				// Go to __END__, if enough corners have been found
 				found = mrWriteCorners( output_quad_group, max_count, pattern_size, min_number_of_corners);
 				if (found == -1 || found == 1)
-					EXIT;
+                    EXIT;
 			}
 		}
 	}
@@ -794,11 +801,11 @@ if (VisualizeResults) {
 	error.close();
 
 // EVALUATE TIMER
-#if TIMER
-	float time3 = (float) (clock() - start_time) / CLOCKS_PER_SEC;
-	FindChessboardCorners2 << "Time 3 for cvFindChessboardCorners2 was " << time3 << " seconds." << endl;
-	FindChessboardCorners2.close();
-#endif
+    if (SaveTimerInfo){
+        float time3 = (float) (clock() - start_time) / CLOCKS_PER_SEC;
+        FindChessboardCorners2 << "Time 3 for cvFindChessboardCorners2 was " << time3 << " seconds." << endl;
+        FindChessboardCorners2.close();
+    }
 
 	// Return found
 	// Found can have the values
@@ -951,10 +958,11 @@ icvFindConnectedQuads( CvCBQuad *quad, int quad_count, CvCBQuad **out_group,
                        int group_idx, CvMemStorage* storage, int dilation )
 {
 //START TIMER
-#if TIMER
 	ofstream FindConnectedQuads;
-    time_t  start_time = clock();
-#endif
+    time_t  start_time;
+    if (SaveTimerInfo){
+        start_time= clock();
+    }
 
 	// initializations
     CvMemStorage* temp_storage = cvCreateChildMemStorage( storage );
@@ -1002,12 +1010,12 @@ icvFindConnectedQuads( CvCBQuad *quad, int quad_count, CvCBQuad **out_group,
     cvReleaseMemStorage( &temp_storage );
 	
 // EVALUATE TIMER
-#if TIMER
-	float time = (float) (clock() - start_time) / CLOCKS_PER_SEC;
-	FindConnectedQuads.open("timer/FindConnectedQuads.txt", ofstream::app);
-	FindConnectedQuads << "Time for cvFindConnectedQuads was " << time << " seconds." << endl;
-	FindConnectedQuads.close();
-#endif
+    if (SaveTimerInfo){
+        float time = (float) (clock() - start_time) / CLOCKS_PER_SEC;
+        FindConnectedQuads.open("timer/FindConnectedQuads.txt", ofstream::app);
+        FindConnectedQuads << "Time for cvFindConnectedQuads was " << time << " seconds." << endl;
+        FindConnectedQuads.close();
+    }
 
     return count;
 }
@@ -1020,10 +1028,11 @@ icvFindConnectedQuads( CvCBQuad *quad, int quad_count, CvCBQuad **out_group,
 static void mrLabelQuadGroup( CvCBQuad **quad_group, int count, CvSize pattern_size, bool firstRun )
 {
 //START TIMER
-#if TIMER
 	ofstream LabelQuadGroup;
-    time_t  start_time = clock();
-#endif
+    time_t  start_time;
+    if (SaveTimerInfo){
+        start_time= clock();
+    }
 
 	// If this is the first function call, a seed quad needs to be selected
 	if (firstRun == true)
@@ -1431,12 +1440,12 @@ static void mrLabelQuadGroup( CvCBQuad **quad_group, int count, CvSize pattern_s
 		
 	
 // EVALUATE TIMER
-#if TIMER
-	float time = (float) (clock() - start_time) / CLOCKS_PER_SEC;
-	LabelQuadGroup.open("timer/LabelQuadGroup.txt", ofstream::app);
-	LabelQuadGroup << "Time for mrLabelQuadGroup was " << time << " seconds." << endl;
-	LabelQuadGroup.close();
-#endif
+    if (SaveTimerInfo){
+        float time = (float) (clock() - start_time) / CLOCKS_PER_SEC;
+        LabelQuadGroup.open("timer/LabelQuadGroup.txt", ofstream::app);
+        LabelQuadGroup << "Time for mrLabelQuadGroup was " << time << " seconds." << endl;
+        LabelQuadGroup.close();
+    }
 
 }
 
@@ -1480,10 +1489,12 @@ static void mrCopyQuadGroup( CvCBQuad **temp_quad_group, CvCBQuad **for_out_quad
 static void mrFindQuadNeighbors2( CvCBQuad *quads, int quad_count, int dilation)
 {
 //START TIMER
-#if TIMER
 	ofstream FindQuadNeighbors2;
-    time_t  start_time = clock();
-#endif
+    time_t  start_time;
+    if (SaveTimerInfo){
+         start_time = clock();
+    }
+
 
 	// Thresh dilation is used to counter the effect of dilation on the
 	// distance between 2 neighboring corners. Since the distance below is 
@@ -1700,12 +1711,12 @@ static void mrFindQuadNeighbors2( CvCBQuad *quads, int quad_count, int dilation)
     }
 
 // EVALUATE TIMER
-#if TIMER
-	float time = (float) (clock() - start_time) / CLOCKS_PER_SEC;
-	FindQuadNeighbors2.open("timer/FindQuadNeighbors2.txt", ofstream::app);
-	FindQuadNeighbors2 << "Time for mrFindQuadNeighbors2 was " << time << " seconds." << endl;
-	FindQuadNeighbors2.close();
-#endif
+    if (SaveTimerInfo){
+        float time = (float) (clock() - start_time) / CLOCKS_PER_SEC;
+        FindQuadNeighbors2.open("timer/FindQuadNeighbors2.txt", ofstream::app);
+        FindQuadNeighbors2 << "Time for mrFindQuadNeighbors2 was " << time << " seconds." << endl;
+        FindQuadNeighbors2.close();
+    }
 }
 
 
@@ -1721,10 +1732,12 @@ static int mrAugmentBestRun( CvCBQuad *new_quads, int new_quad_count, int new_di
 							  CvCBQuad **old_quads, int old_quad_count, int old_dilation )
 {
 //START TIMER
-#if TIMER
+
 	ofstream AugmentBestRun;
-    time_t  start_time = clock();
-#endif
+    time_t  start_time;
+    if (SaveTimerInfo){
+        start_time = clock();
+    }
 
 	// thresh dilation is used to counter the effect of dilation on the
 	// distance between 2 neighboring corners. Since the distance below is 
@@ -2050,12 +2063,12 @@ static int mrAugmentBestRun( CvCBQuad *new_quads, int new_quad_count, int new_di
     }
 	
 // EVALUATE TIMER
-#if TIMER
-	float time = (float) (clock() - start_time) / CLOCKS_PER_SEC;
-	AugmentBestRun.open("timer/AugmentBestRun.txt", ofstream::app);
-	AugmentBestRun << "Time for mrAugmentBestRun was " << time << " seconds." << endl;
-	AugmentBestRun.close();
-#endif
+    if (SaveTimerInfo){
+        float time = (float) (clock() - start_time) / CLOCKS_PER_SEC;
+        AugmentBestRun.open("timer/AugmentBestRun.txt", ofstream::app);
+        AugmentBestRun << "Time for mrAugmentBestRun was " << time << " seconds." << endl;
+        AugmentBestRun.close();
+    }
 
 	// Finished, don't start the function again
 	return 1;
@@ -2071,10 +2084,11 @@ icvGenerateQuads( CvCBQuad **out_quads, CvCBCorner **out_corners,
                   CvMemStorage *storage, CvMat *image, int flags, int dilation, bool firstRun )
 {
 //START TIMER
-#if TIMER
 	ofstream GenerateQuads;
-    time_t  start_time = clock();
-#endif
+    time_t  start_time;
+    if (SaveTimerInfo){
+        start_time = clock();
+    }
 
 	// Initializations
     int quad_count = 0;
@@ -2255,12 +2269,13 @@ icvGenerateQuads( CvCBQuad **out_quads, CvCBCorner **out_corners,
     cvReleaseMemStorage( &temp_storage );
 
 // EVALUATE TIMER
-#if TIMER
-	float time = (float) (clock() - start_time) / CLOCKS_PER_SEC;
-	GenerateQuads.open("timer/GenerateQuads.txt", ofstream::app);
-	GenerateQuads << "Time for icvGenerateQuads was " << time << " seconds." << endl;
-	GenerateQuads.close();
-#endif
+    float time;
+    if (SaveTimerInfo){
+        time = (float) (clock() - start_time) / CLOCKS_PER_SEC;
+        GenerateQuads.open("timer/GenerateQuads.txt", ofstream::app);
+        GenerateQuads << "Time for icvGenerateQuads was " << time << " seconds." << endl;
+        GenerateQuads.close();
+    }
 
     return quad_count;
 }
