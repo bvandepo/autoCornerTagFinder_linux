@@ -16,6 +16,7 @@ TEMPLATE = app
 
 DESTDIR = ./
 OBJECTS_DIR = ./
+INCLUDEPATH += /usr/include/eigen3/
 INCLUDEPATH += ./
 INCLUDEPATH += /usr/local/include
 INCLUDEPATH += /usr/local/include/opencv2
@@ -27,7 +28,7 @@ MAKE_LIBDIR     += /usr/local/lib/
 #QMAKE_LIBDIR     += /usr/local/MATLAB/R2014a/bin/glnxa64/
 
 
-LIBS+= -L/usr/local/lib/ -lopencv_core -lopencv_highgui -lopencv_imgproc
+LIBS+= -L/usr/local/lib/ -lopencv_core -lopencv_highgui -lopencv_imgproc -lopencv_calib3d
 
 SOURCES +=   main.cpp cvcalibinit3.cpp
 HEADERS += cvcalibinit3.h
