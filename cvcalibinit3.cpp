@@ -113,13 +113,15 @@ static int icvCleanFoundConnectedQuads( int quad_count, CvCBQuad **quads,
                                         CvSize pattern_size );
 
 static int mrWriteCorners( CvCBQuad **output_quads, int count, CvSize pattern_size,
-                           int min_number_of_corners );
+                           int min_number_of_corners, CvMat *image=NULL );
 
 
 
 int determineQuadCode( CvCBQuad *quads, int res, CvMat *image);
 //___________________________________________________________________________
 int determineQuadCode( CvCBQuad *quads, int res, CvMat *image){
+   static int nb=0;
+   nb++;
     for (int i=0;i<4;i++){
         cout <<"i:" << i<< endl;
         cout <<"c:" << quads->corners[i]->column << endl;
@@ -207,7 +209,9 @@ int determineQuadCode( CvCBQuad *quads, int res, CvMat *image){
         }
     //    cv::warpPerspective(cv::InputArray(imageCopyB), cv::OutputArray(imageRect), H, cv::Size(res,res), cv::INTER_LINEAR, cv::BORDER_CONSTANT);
     cvShowImage( "reconstructed tag", imageRect);
-    cvSaveImage("pictureVis/reconstructedtag.png", imageRect);
+    char name[1000];
+    sprintf(name,"pictureVis/reconstructedtag_%04d.png",nb );
+    cvSaveImage(name, imageRect);
     return 0;
 }
 
@@ -630,7 +634,7 @@ int cvFindChessboardCorners3( const void* arr, CvSize pattern_size,
     //check each quad to determine if it contains a quad
     // for( int kkk = 0; kkk < max_count; kkk++ )
     //
-    if (1)
+   /* if (1)
     {
         //ne balaye que les cases noires du damier!!!!!
         int k=9;
@@ -638,14 +642,14 @@ int cvFindChessboardCorners3( const void* arr, CvSize pattern_size,
         {           cout << "k:" <<k<<endl;
             int toto=determineQuadCode( output_quad_group[k], 11,img);
         }
-    }
+    }*/
     //---------------------------------------------------------------------------
 
 
 
 
     // If enough corners have been found already, then there is no need for PART 2 ->EXIT
-    found = mrWriteCorners( output_quad_group, max_count, pattern_size, min_number_of_corners);
+    found = mrWriteCorners( output_quad_group, max_count, pattern_size, min_number_of_corners,img);
     if (found == -1 || found == 1)
         EXIT;
 
@@ -2395,7 +2399,7 @@ icvGenerateQuads( CvCBQuad **out_quads, CvCBCorner **out_corners,
 //===========================================================================
 // WRITE CORNERS TO FILE
 //===========================================================================
-static int mrWriteCorners( CvCBQuad **output_quads, int count, CvSize pattern_size, int min_number_of_corners )
+static int mrWriteCorners( CvCBQuad **output_quads, int count, CvSize pattern_size, int min_number_of_corners, CvMat *image)
 {
     // Initialize
     int corner_count = 0;
@@ -2434,6 +2438,14 @@ static int mrWriteCorners( CvCBQuad **output_quads, int count, CvSize pattern_si
     }
 
 
+    //2D array of CvCBQuad to store every quads (black and white ones)
+    CvCBQuad tabq [pattern_size.height+1][pattern_size.width+1];
+    //Grid corners positions in 2D arrays
+    float tabX [pattern_size.height+1][pattern_size.width+1];
+    float tabY [pattern_size.height+1][pattern_size.width+1];
+
+
+
     // If in a given direction the target pattern size is reached, we know exactly how
     // the checkerboard is oriented.
     // Else we need to prepare enought "dummy" corners for the worst case.
@@ -2463,7 +2475,7 @@ static int mrWriteCorners( CvCBQuad **output_quads, int count, CvSize pattern_si
             }
         }
     }
-
+//determine the orientation
     if( flagColumn == true)
     {
         if( max_column - min_column == pattern_size.width + 1)
@@ -2530,7 +2542,8 @@ static int mrWriteCorners( CvCBQuad **output_quads, int count, CvSize pattern_si
                             cornersX << " ";
                             cornersY << (output_quads[k])->corners[l]->pt.y;
                             cornersY << " ";
-
+                            tabX[i-(min_row + 1)][ j -(min_column + 1)]=(output_quads[k])->corners[l]->pt.x;
+                            tabY[i-(min_row + 1)][ j -(min_column + 1)]=(output_quads[k])->corners[l]->pt.y;
                             corner_count++;
                         }
 
@@ -2560,7 +2573,27 @@ static int mrWriteCorners( CvCBQuad **output_quads, int count, CvSize pattern_si
         cornersY << endl;
     }
 
+    //recreate a 2D array of quads containting Black and Whites quads for tag decoding
+    for (int i=0;i<maxPattern_sizeRow-1;i++)
+    for (int j=0;j<maxPattern_sizeColumn-1;j++)
+    {
+        for (int k=0;k<4;k++)
+            tabq [i][j].corners[k]=new   CvCBCorner;
 
+        tabq [i][j].corners[0]->pt.x=tabX[i][j];
+        tabq [i][j].corners[0]->pt.y=tabY[i][j];
+
+        tabq [i][j].corners[1]->pt.x=tabX[i][j+1];
+        tabq [i][j].corners[1]->pt.y=tabY[i][j+1];
+
+        tabq [i][j].corners[2]->pt.x=tabX[i+1][j+1];
+        tabq [i][j].corners[2]->pt.y=tabY[i+1][j+1];
+
+        tabq [i][j].corners[3]->pt.x=tabX[i+1][j];
+        tabq [i][j].corners[3]->pt.y=tabY[i+1][j];
+
+        int value=determineQuadCode( &tabq [i][j], 11,image);
+    }
     // Write to the corner matrix size info file
     cornerInfo << maxPattern_sizeRow<< " " << maxPattern_sizeColumn << endl;
 
