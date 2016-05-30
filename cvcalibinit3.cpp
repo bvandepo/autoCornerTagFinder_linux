@@ -45,8 +45,8 @@ using std::ifstream;
 // Defines
 #define MAX_CONTOUR_APPROX  7
 
-bool VisualizeResults=false;  // Turn on visualization
-bool WaitBetweenImages=true; // wait for the user to press a key between image
+bool VisualizeResults=true;  // Turn on visualization
+bool WaitBetweenImages=true; // wait for the user to press a key between image, display will be produced only if this variable is set to true
 bool SaveTimerInfo=true; // Elapse the function duration times
 
 
@@ -120,26 +120,91 @@ static int mrWriteCorners( CvCBQuad **output_quads, int count, CvSize pattern_si
 int determineQuadCode( CvCBQuad *quads, int res, CvMat *image);
 //___________________________________________________________________________
 int determineQuadCode( CvCBQuad *quads, int res, CvMat *image){
-   static int nb=0;
-   nb++;
-    for (int i=0;i<4;i++){
-        cout <<"i:" << i<< endl;
-        cout <<"c:" << quads->corners[i]->column << endl;
-        cout <<"r:" << quads->corners[i]->row << endl;
-        cout <<"x:" << quads->corners[i]->pt.x << endl;
-        cout <<"y:" << quads->corners[i]->pt.y << endl;
+    static int nb=0;
+    static IplImage* imageCopyB;
+    static IplImage* imageCopyB2;
+
+
+    unsigned char    pattern0[11*11]={0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,0,0,0,0,0,1,0,0,0,0,0,1,0,0,0,0,1,0,0,0,0,0,1,0,0,0,0,1,0,0,0,0,0,1,0,0,0,0,1,0,0,0,0,0,1,0,0,0,0,1,0,0,0,0,0,1,0,0,0,0,0,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
+    unsigned char    patternX[11*11]={0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,1,0,0,0,0,0,1,0,0,0,1,0,0,0,0,0,0,0,1,0,1,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,1,0,1,0,0,0,0,0,0,0,1,0,0,0,1,0,0,0,0,0,1,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
+    unsigned char    patternY[11*11]={0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,1,0,0,0,0,0,1,0,0,0,1,0,0,0,0,0,0,0,1,0,1,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
+    unsigned char    patternW[11*11];
+    unsigned char    patternB[11*11];
+
+    unsigned char    patternY2[11*11];
+    unsigned char    patternY3[11*11];
+    unsigned char    patternY4[11*11];
+
+    const unsigned int nb_patterns=8;
+    //   int scorePattern[nb_patterns];
+    unsigned char *listPattern[nb_patterns];
+    listPattern[0]=patternB;
+    listPattern[1]=patternW;
+    listPattern[2]=pattern0;
+    listPattern[3]=patternX;
+    listPattern[4]=patternY;
+    listPattern[5]=patternY2;
+    listPattern[6]=patternY3;
+    listPattern[7]=patternY4;
+
+    unsigned char nbBlacksInPattern[nb_patterns];
+    memset(nbBlacksInPattern,0,nb_patterns);
+
+    for (int u=0;u<res;u++)
+        for (int v=0;v<res;v++) {
+            /*     patternB[u+v*res]= -1;
+           patternW[u+v*res]= +1;
+           pattern0[u+v*res]= -(-1+2*pattern0[u+v*res]);
+           patternX[u+v*res]= +(-1+2*patternX[u+v*res]);
+           patternY[u+v*res]= +(-1+2*patternY[u+v*res]);
+       */
+            patternB[u+v*res]= 0;
+            patternW[u+v*res]= 1;
+            /*pattern0[u+v*res]= 255*pattern0[u+v*res];
+           patternX[u+v*res]= 255-255*patternX[u+v*res];
+           patternY[u+v*res]= 255-255*patternY[u+v*res];
+           */
+            pattern0[u+v*res]= pattern0[u+v*res];
+            patternX[u+v*res]= 1-patternX[u+v*res];
+            patternY[u+v*res]= 1-patternY[u+v*res];
+        }
+    //rotate Y pattern
+    for (int u=0;u<res;u++)
+        for (int v=0;v<res;v++) {
+            patternY2[u+v*res]=patternY[((res-1)-v)+(u)*res];
+            patternY3[u+v*res]=patternY[((res-1)-u)+((res-1)-v)*res];
+            patternY4[u+v*res]=patternY[v+((res-1)-u)*res];
+        }
+
+    for (int n=0;n<nb_patterns;n++)
+        for (int u=1;u<res-1;u++)
+            for (int v=1;v<res-1;v++) {
+                if (listPattern[n][u+v*res]==0)
+                    nbBlacksInPattern[n]++;
+            }
+
+    nb++;
+
+    if (0){
+        cout <<"nb:" << nb<< endl;
+        for (int i=0;i<4;i++){
+            cout <<"i:" << i<< endl;
+            cout <<"c:" << quads->corners[i]->column << endl;
+            cout <<"r:" << quads->corners[i]->row << endl;
+            cout <<"x:" << quads->corners[i]->pt.x << endl;
+            cout <<"y:" << quads->corners[i]->pt.y << endl;
+        }
     }
-    IplImage* imageCopyB;
-    IplImage* imageCopyB2;
 
     bool VisualizeResultsB=true;
     if (VisualizeResultsB) {
         cvNamedWindow( "tested quad", 1 );
-        imageCopyB = cvCreateImage( cvGetSize(image), 8, 1 );
-        cvCopy(  image, imageCopyB);
-        imageCopyB2 = cvCreateImage( cvGetSize(image), 8, 3 );
-        cvCvtColor( imageCopyB, imageCopyB2, CV_GRAY2BGR );
-
+        if (nb==1){
+            imageCopyB = cvCreateImage( cvGetSize(image), 8, 1 );
+            cvCopy(  image, imageCopyB);
+            imageCopyB2 = cvCreateImage( cvGetSize(image), 8, 3 );
+            cvCvtColor( imageCopyB, imageCopyB2, CV_GRAY2BGR );
+        }
         CvCBQuad* print_quad = quads;
         CvPoint pt[4];
         pt[0].x = (int)print_quad->corners[0]->pt.x;
@@ -156,8 +221,7 @@ int determineQuadCode( CvCBQuad *quads, int res, CvMat *image){
         cvLine( imageCopyB2, pt[3], pt[0], CV_RGB(255,255,0), 1, 8 );
     }
     cvShowImage( "all found quads per dilation run", imageCopyB2);
-    //cvSaveImage("pictureVis/allFoundQuads.png", imageCopy22);
-    //  if (WaitBetweenImages) cvWaitKey(0);
+    cvSaveImage("pictureVis/allFoundQuadsB.png", imageCopyB2);
 
     //homography estimation
     //simple translation
@@ -178,7 +242,8 @@ int determineQuadCode( CvCBQuad *quads, int res, CvMat *image){
     listP2.push_back(cv::Point2f(res-1,0));
 
     H=cv::findHomography(listP2,listP1,0);
-    cout <<H<<endl;
+    if (0)
+        cout <<H<<endl;
 
     CvSize tag_size;
     tag_size.width=res;
@@ -207,11 +272,131 @@ int determineQuadCode( CvCBQuad *quads, int res, CvMat *image){
             // mettre le flag WARP_INVERSE_MAP si on veut l'homographie inverse
             // http://docs.opencv.org/2.4/modules/imgproc/doc/geometric_transformations.html#void%20warpPerspective%28InputArray%20src,%20OutputArray%20dst,%20InputArray%20M,%20Size%20dsize,%20int%20flags,%20int%20borderMode,%20const%20Scalar&%20borderValue%29
         }
+
+    //histogram warping
+    unsigned char min=255;
+    unsigned char max=0;
+    unsigned char histo[256];
+    unsigned char histocumul[256];
+    memset(histo,0,256);
+    memset(histocumul,0,256);
+
+    for (int u=1;u<res-1;u++)
+        for (int v=1;v<res-1;v++)
+        {
+            unsigned char val= imageRect->imageData[u+v*imageRect->widthStep];
+            if (val>max) max=val;
+            if (min>val) min=val;
+            histo[val]++;
+        }
+
+    //  unsigned char threshfor13=0; //66; //highest value considered as black for 13 black pixels
+    //  unsigned char threshfor10=0; //highest value considered as black for 13 black pixels
+    //  unsigned char threshfor101=0; //highest value considered as black for 13 black pixels
+
+    unsigned char thresholdForPattern[nb_patterns];
+    memset(thresholdForPattern,0,nb_patterns);
+
+    int errorForPattern[nb_patterns];
+    memset(errorForPattern,0,nb_patterns*sizeof(int));
+
+    int sum=0;
+    for (int val=0;val<256;val++){
+        sum+=histo[val];
+        histocumul[val]=sum;
+
+        for (int n=0;n<nb_patterns;n++){
+            if ((sum>=nbBlacksInPattern[n]) && (thresholdForPattern[n]==0))
+                thresholdForPattern[n]=val;
+        }
+        /*   if ((sum>=10) && (threshfor10==0))
+                threshfor10=val;
+        if ((sum>=13) && (threshfor13==0))
+                threshfor13=val;
+        if ((sum>=101) && (threshfor101==0))
+                threshfor101=val;*/
+    }
+
+    //    if (nb==18)
+    //        printf("ici");
+
+    //    for (int n=0;n<nb_patterns;n++)
+    //        scorePattern[n]=0;
+
+
+    for (int u=1;u<res-1;u++)
+        for (int v=1;v<res-1;v++)
+        {
+            int val= (unsigned char) imageRect->imageData[u+v*imageRect->widthStep];
+            for (int n=0;n<nb_patterns;n++){
+                // int n=3;{
+                if ((val>thresholdForPattern[n]) && ( listPattern[n][u+v*res]!=1))
+                    errorForPattern[n]++;
+                //if ((sum>=nbBlacksInPattern[n]) && (thresholdForPattern[n]==0))
+                //   thresholdForPattern[n]=val;
+            }
+
+
+            /*    if (val>threshfor13)
+                val=255;
+            else
+                val=0;
+            imageRect->imageData[u+v*imageRect->widthStep]=val;
+          */
+            //  for (int n=0;n<nb_patterns;n++)
+            //  scorePattern[n]+=listPattern[n][u+v*res]*val;
+            //      scorePattern[n]+=pow(listPattern[n][u+v*res]-val,2);
+        }
+
+    /*
+    float factor=255./(max-min);
+    for (int u=1;u<res-1;u++)
+        for (int v=1;v<res-1;v++)
+        {
+            int val= (unsigned char) imageRect->imageData[u+v*imageRect->widthStep]; //
+            val=(val-min)*factor;
+            if (val>255) val=255;
+            if (val<0) val=0;
+            imageRect->imageData[u+v*imageRect->widthStep]=val;
+            for (int n=0;n<nb_patterns;n++)
+              //  scorePattern[n]+=listPattern[n][u+v*res]*val;
+                 scorePattern[n]+=pow(listPattern[n][u+v*res]-val,2);
+        }
+*/
+
+
+    //debugging code to display the patterns
+    /*    for (int u=0;u<res;u++)
+        for (int v=0;v<res;v++)        {
+            imageRect->imageData[u+v*imageRect->widthStep]= 255*listPattern[(nb-1)%nb_patterns][u+v*res];
+        }*/
+
+
+    /*    for (int n=0;n<nb_patterns;n++)
+        cout << n << " : " << errorForPattern[n] <<"  " ; //<<endl;
+    cout<<endl;
+*/
+    for (int n=2;n<nb_patterns;n++) //skip the black & white
+        if (   errorForPattern[n]<= 1){ //allow for 2 pixel to be erronneous // TODO check to find the best with no ambiguities
+            cout <<"nb:" << nb;
+            cout <<" pattern  "<< n<< " found " <<endl;
+        }
+    //    if (nb==18)
+    //        printf("ici");
+    //compare with the tag codes
+
     //    cv::warpPerspective(cv::InputArray(imageCopyB), cv::OutputArray(imageRect), H, cv::Size(res,res), cv::INTER_LINEAR, cv::BORDER_CONSTANT);
     cvShowImage( "reconstructed tag", imageRect);
     char name[1000];
     sprintf(name,"pictureVis/reconstructedtag_%04d.png",nb );
     cvSaveImage(name, imageRect);
+
+
+
+
+    //  if (WaitBetweenImages) cvWaitKey(0);
+
+
     return 0;
 }
 
@@ -2572,6 +2757,36 @@ static int mrWriteCorners( CvCBQuad **output_quads, int count, CvSize pattern_si
         cornersX << endl;
         cornersY << endl;
     }
+
+    //refine corners locations
+    vector<cv::Point2f> listP1(pattern_size.height*pattern_size.width);
+    for (int i=0;i<pattern_size.height;i++)
+        for (int j=0;j<pattern_size.width;j++)
+        {
+            float x=tabX[i][j];
+            float y=tabY[i][j];
+            listP1[j+i*pattern_size.width]=(cv::Point2f(x,y));
+        }
+    //http://docs.opencv.org/2.4/modules/imgproc/doc/feature_detection.html#cornersubpix
+
+//    cv::Mat im=*image;
+
+    cv::Mat im=cv::cvarrToMat(image);
+
+  //  cornerSubPix(im, listP1,cv::Size(15,15), cv::Size(-1,-1), cv::TermCriteria(cv::TermCriteria::COUNT+cv::TermCriteria::EPS,100000,0.00001));
+
+   // cornerSubPix(im, listP1,cv::Size(5,5), cv::Size(-1,-1), cv::TermCriteria(cv::TermCriteria::COUNT,100000,0));
+
+    cornerSubPix(im, listP1,cv::Size(7,7), cv::Size(1,1), cv::TermCriteria(cv::TermCriteria::COUNT,1000,0));
+
+   //(cv::InputArray)*image
+    for (int i=0;i<pattern_size.height;i++)
+        for (int j=0;j<pattern_size.width;j++)
+        {
+            cv::Point2f p=listP1[j+i*pattern_size.width];
+            tabX[i][j]=p.x;
+            tabY[i][j]=p.y;
+        }
 
     //recreate a 2D array of quads containting Black and Whites quads for tag decoding
     for (int i=0;i<maxPattern_sizeRow-1;i++)
