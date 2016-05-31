@@ -46,7 +46,7 @@ using std::ifstream;
 #define MAX_CONTOUR_APPROX  7
 
 bool VisualizeResults=true;  // Turn on visualization
-bool WaitBetweenImages=true; // wait for the user to press a key between image, display will be produced only if this variable is set to true
+bool WaitBetweenImages=false; // wait for the user to press a key between image, display will be produced only if this variable is set to true
 bool SaveTimerInfo=true; // Elapse the function duration times
 
 
@@ -119,23 +119,19 @@ static int mrWriteCorners( CvCBQuad **output_quads, int count, CvSize pattern_si
 
 int determineQuadCode( CvCBQuad *quads, int res, CvMat *image);
 //___________________________________________________________________________
-int determineQuadCode( CvCBQuad *quads, int res, CvMat *image){
+int determineQuadCode( CvCBQuad *quads, int res, IplImage *image,IplImage* imageRect,bool VisualizeResultsB, IplImage* imageDebugColor){
     static int nb=0;
-    static IplImage* imageCopyB;
-    static IplImage* imageCopyB2;
-
-
+    unsigned char    patternW[11*11];
+    unsigned char    patternB[11*11];
     unsigned char    pattern0[11*11]={0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,0,0,0,0,0,1,0,0,0,0,0,1,0,0,0,0,1,0,0,0,0,0,1,0,0,0,0,1,0,0,0,0,0,1,0,0,0,0,1,0,0,0,0,0,1,0,0,0,0,1,0,0,0,0,0,1,0,0,0,0,0,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
     unsigned char    patternX[11*11]={0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,1,0,0,0,0,0,1,0,0,0,1,0,0,0,0,0,0,0,1,0,1,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,1,0,1,0,0,0,0,0,0,0,1,0,0,0,1,0,0,0,0,0,1,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
     unsigned char    patternY[11*11]={0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,1,0,0,0,0,0,1,0,0,0,1,0,0,0,0,0,0,0,1,0,1,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
-    unsigned char    patternW[11*11];
-    unsigned char    patternB[11*11];
-
     unsigned char    patternY2[11*11];
     unsigned char    patternY3[11*11];
     unsigned char    patternY4[11*11];
-
-    const unsigned int nb_patterns=8;
+    unsigned char    patternP[11*11]={0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,1,1,1,1,1,1,1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
+    const unsigned int nb_patterns=9;
+    unsigned char    nbBlacksInPattern[nb_patterns];
     //   int scorePattern[nb_patterns];
     unsigned char *listPattern[nb_patterns];
     listPattern[0]=patternB;
@@ -146,27 +142,21 @@ int determineQuadCode( CvCBQuad *quads, int res, CvMat *image){
     listPattern[5]=patternY2;
     listPattern[6]=patternY3;
     listPattern[7]=patternY4;
-
-    unsigned char nbBlacksInPattern[nb_patterns];
-    memset(nbBlacksInPattern,0,nb_patterns);
+    listPattern[8]=patternP;
+    char reconstructedPattern[11*11];
 
     for (int u=0;u<res;u++)
         for (int v=0;v<res;v++) {
-            /*     patternB[u+v*res]= -1;
-           patternW[u+v*res]= +1;
-           pattern0[u+v*res]= -(-1+2*pattern0[u+v*res]);
-           patternX[u+v*res]= +(-1+2*patternX[u+v*res]);
-           patternY[u+v*res]= +(-1+2*patternY[u+v*res]);
-       */
+           //pattern0[u+v*res]= -(-1+2*pattern0[u+v*res]);
+           //patternX[u+v*res]= +(-1+2*patternX[u+v*res]);
+           //patternY[u+v*res]= +(-1+2*patternY[u+v*res]);
             patternB[u+v*res]= 0;
             patternW[u+v*res]= 1;
-            /*pattern0[u+v*res]= 255*pattern0[u+v*res];
-           patternX[u+v*res]= 255-255*patternX[u+v*res];
-           patternY[u+v*res]= 255-255*patternY[u+v*res];
-           */
-            pattern0[u+v*res]= pattern0[u+v*res];
+            //for negative pattern   pattern0[u+v*res]= pattern0[u+v*res];
+            pattern0[u+v*res]= 1-pattern0[u+v*res];
             patternX[u+v*res]= 1-patternX[u+v*res];
             patternY[u+v*res]= 1-patternY[u+v*res];
+            patternP[u+v*res]= 1-patternP[u+v*res];
         }
     //rotate Y pattern
     for (int u=0;u<res;u++)
@@ -175,16 +165,15 @@ int determineQuadCode( CvCBQuad *quads, int res, CvMat *image){
             patternY3[u+v*res]=patternY[((res-1)-u)+((res-1)-v)*res];
             patternY4[u+v*res]=patternY[v+((res-1)-u)*res];
         }
-
+    //count black pixel in each pattern
+    memset(nbBlacksInPattern,0,nb_patterns);
     for (int n=0;n<nb_patterns;n++)
         for (int u=1;u<res-1;u++)
             for (int v=1;v<res-1;v++) {
                 if (listPattern[n][u+v*res]==0)
                     nbBlacksInPattern[n]++;
             }
-
     nb++;
-
     if (0){
         cout <<"nb:" << nb<< endl;
         for (int i=0;i<4;i++){
@@ -195,16 +184,7 @@ int determineQuadCode( CvCBQuad *quads, int res, CvMat *image){
             cout <<"y:" << quads->corners[i]->pt.y << endl;
         }
     }
-
-    bool VisualizeResultsB=true;
     if (VisualizeResultsB) {
-        cvNamedWindow( "tested quad", 1 );
-        if (nb==1){
-            imageCopyB = cvCreateImage( cvGetSize(image), 8, 1 );
-            cvCopy(  image, imageCopyB);
-            imageCopyB2 = cvCreateImage( cvGetSize(image), 8, 3 );
-            cvCvtColor( imageCopyB, imageCopyB2, CV_GRAY2BGR );
-        }
         CvCBQuad* print_quad = quads;
         CvPoint pt[4];
         pt[0].x = (int)print_quad->corners[0]->pt.x;
@@ -215,13 +195,11 @@ int determineQuadCode( CvCBQuad *quads, int res, CvMat *image){
         pt[2].y = (int)print_quad->corners[2]->pt.y;
         pt[3].x = (int)print_quad->corners[3]->pt.x;
         pt[3].y = (int)print_quad->corners[3]->pt.y;
-        cvLine( imageCopyB2, pt[0], pt[1], CV_RGB(255,255,0), 1, 8 );
-        cvLine( imageCopyB2, pt[1], pt[2], CV_RGB(255,255,0), 1, 8 );
-        cvLine( imageCopyB2, pt[2], pt[3], CV_RGB(255,255,0), 1, 8 );
-        cvLine( imageCopyB2, pt[3], pt[0], CV_RGB(255,255,0), 1, 8 );
+        cvLine( imageDebugColor, pt[0], pt[1], CV_RGB(255,0,0), 1, 8 );
+        cvLine( imageDebugColor, pt[1], pt[2], CV_RGB(255,0,0), 1, 8 );
+        cvLine( imageDebugColor, pt[2], pt[3], CV_RGB(255,0,0), 1, 8 );
+        cvLine( imageDebugColor, pt[3], pt[0], CV_RGB(255,0,0), 1, 8 );
     }
-    cvShowImage( "all found quads per dilation run", imageCopyB2);
-    cvSaveImage("pictureVis/allFoundQuadsB.png", imageCopyB2);
 
     //homography estimation
     //simple translation
@@ -234,25 +212,15 @@ int determineQuadCode( CvCBQuad *quads, int res, CvMat *image){
     vector<cv::Point2f> listP1;
     for (int j=0;j<4;j++)
         listP1.push_back(cv::Point2f(quads->corners[j]->pt.x,quads->corners[j]->pt.y));
-
     vector<cv::Point2f> listP2;
     listP2.push_back(cv::Point2f(0,0));
     listP2.push_back(cv::Point2f(0,res-1));
     listP2.push_back(cv::Point2f(res-1,res-1));
     listP2.push_back(cv::Point2f(res-1,0));
-
     H=cv::findHomography(listP2,listP1,0);
-    if (0)
-        cout <<H<<endl;
-
-    CvSize tag_size;
-    tag_size.width=res;
-    tag_size.height=res;
-
-    IplImage* imageRect = cvCreateImage( tag_size, 8, 1 );
+    if (0) cout <<H<<endl;
     for (int u=0;u<res;u++)
-        for (int v=0;v<res;v++)
-        {
+        for (int v=0;v<res;v++)        {
             //simple generation of a gradation pattern
             //imageRect->imageData[u+v*imageRect->widthStep]=v*10+u*10;
             double wu2= H.at<double>(1-1,1-1)*u + H.at<double>(1-1,2-1)*v +  H.at<double>(1-1,3-1)*1;
@@ -264,70 +232,49 @@ int determineQuadCode( CvCBQuad *quads, int res, CvMat *image){
             int v2i=round(v2);
             unsigned char val=255; //default value;
             //chech u2i,v2i is inside the image
-            if ((u2i>=0) && (v2i>=0) && (u2i<imageCopyB->width) && (v2i<imageCopyB->height))
-            {
-                val=imageCopyB->imageData[u2i+v2i*imageCopyB->widthStep];
+            if ((u2i>=0) && (v2i>=0) && (u2i<image->width) && (v2i<image->height)) {
+                 val=image->imageData[u2i+v2i*image->widthStep];
             }
+            reconstructedPattern[u+v*11]=val; //for faster access?
             imageRect->imageData[u+v*imageRect->widthStep]=val;
-            // mettre le flag WARP_INVERSE_MAP si on veut l'homographie inverse
+            //use flag WARP_INVERSE_MAP if the inverse homographie is wanted
             // http://docs.opencv.org/2.4/modules/imgproc/doc/geometric_transformations.html#void%20warpPerspective%28InputArray%20src,%20OutputArray%20dst,%20InputArray%20M,%20Size%20dsize,%20int%20flags,%20int%20borderMode,%20const%20Scalar&%20borderValue%29
+            // cv::warpPerspective(cv::InputArray(imageCopyB), cv::OutputArray(imageRect), H, cv::Size(res,res), cv::INTER_LINEAR, cv::BORDER_CONSTANT);
         }
 
-    //histogram warping
+    //histogram
     unsigned char min=255;
     unsigned char max=0;
     unsigned char histo[256];
     unsigned char histocumul[256];
     memset(histo,0,256);
     memset(histocumul,0,256);
-
     for (int u=1;u<res-1;u++)
-        for (int v=1;v<res-1;v++)
-        {
-            unsigned char val= imageRect->imageData[u+v*imageRect->widthStep];
+        for (int v=1;v<res-1;v++) {
+            unsigned char val= reconstructedPattern[u+v*11];
             if (val>max) max=val;
             if (min>val) min=val;
             histo[val]++;
         }
-
-    //  unsigned char threshfor13=0; //66; //highest value considered as black for 13 black pixels
-    //  unsigned char threshfor10=0; //highest value considered as black for 13 black pixels
-    //  unsigned char threshfor101=0; //highest value considered as black for 13 black pixels
-
     unsigned char thresholdForPattern[nb_patterns];
     memset(thresholdForPattern,0,nb_patterns);
-
     int errorForPattern[nb_patterns];
     memset(errorForPattern,0,nb_patterns*sizeof(int));
-
     int sum=0;
     for (int val=0;val<256;val++){
         sum+=histo[val];
         histocumul[val]=sum;
-
         for (int n=0;n<nb_patterns;n++){
             if ((sum>=nbBlacksInPattern[n]) && (thresholdForPattern[n]==0))
                 thresholdForPattern[n]=val;
         }
-        /*   if ((sum>=10) && (threshfor10==0))
-                threshfor10=val;
-        if ((sum>=13) && (threshfor13==0))
-                threshfor13=val;
-        if ((sum>=101) && (threshfor101==0))
-                threshfor101=val;*/
     }
-
-    //    if (nb==18)
-    //        printf("ici");
-
-    //    for (int n=0;n<nb_patterns;n++)
-    //        scorePattern[n]=0;
-
-
+    //     if (nb==18)
+    //       printf("ici");
     for (int u=1;u<res-1;u++)
         for (int v=1;v<res-1;v++)
         {
-            int val= (unsigned char) imageRect->imageData[u+v*imageRect->widthStep];
+            int val= (unsigned char) reconstructedPattern[u+v*11];
             for (int n=0;n<nb_patterns;n++){
                 // int n=3;{
                 if ((val>thresholdForPattern[n]) && ( listPattern[n][u+v*res]!=1))
@@ -335,17 +282,8 @@ int determineQuadCode( CvCBQuad *quads, int res, CvMat *image){
                 //if ((sum>=nbBlacksInPattern[n]) && (thresholdForPattern[n]==0))
                 //   thresholdForPattern[n]=val;
             }
-
-
-            /*    if (val>threshfor13)
-                val=255;
-            else
-                val=0;
-            imageRect->imageData[u+v*imageRect->widthStep]=val;
-          */
-            //  for (int n=0;n<nb_patterns;n++)
-            //  scorePattern[n]+=listPattern[n][u+v*res]*val;
-            //      scorePattern[n]+=pow(listPattern[n][u+v*res]-val,2);
+            //scorePattern[n]+=listPattern[n][u+v*res]*val;
+            //scorePattern[n]+=pow(listPattern[n][u+v*res]-val,2);
         }
 
     /*
@@ -361,43 +299,52 @@ int determineQuadCode( CvCBQuad *quads, int res, CvMat *image){
             for (int n=0;n<nb_patterns;n++)
               //  scorePattern[n]+=listPattern[n][u+v*res]*val;
                  scorePattern[n]+=pow(listPattern[n][u+v*res]-val,2);
-        }
-*/
-
-
+        }*/
     //debugging code to display the patterns
     /*    for (int u=0;u<res;u++)
         for (int v=0;v<res;v++)        {
             imageRect->imageData[u+v*imageRect->widthStep]= 255*listPattern[(nb-1)%nb_patterns][u+v*res];
         }*/
-
-
     /*    for (int n=0;n<nb_patterns;n++)
         cout << n << " : " << errorForPattern[n] <<"  " ; //<<endl;
-    cout<<endl;
-*/
-    for (int n=2;n<nb_patterns;n++) //skip the black & white
-        if (   errorForPattern[n]<= 1){ //allow for 2 pixel to be erronneous // TODO check to find the best with no ambiguities
-            cout <<"nb:" << nb;
-            cout <<" pattern  "<< n<< " found " <<endl;
-        }
-    //    if (nb==18)
-    //        printf("ici");
+    cout<<endl;*/
+
+    int ret=-1; //default value, no tag found
     //compare with the tag codes
 
-    //    cv::warpPerspective(cv::InputArray(imageCopyB), cv::OutputArray(imageRect), H, cv::Size(res,res), cv::INTER_LINEAR, cv::BORDER_CONSTANT);
-    cvShowImage( "reconstructed tag", imageRect);
-    char name[1000];
-    sprintf(name,"pictureVis/reconstructedtag_%04d.png",nb );
-    cvSaveImage(name, imageRect);
 
+    //bvdp: TODO: if 2 patterns have been found, the third should be at a known position, so may be make the acceptable error higher for the remaining...
+    for (int n=2;n<nb_patterns;n++) //skip the black & white
+        if (errorForPattern[n]<= 1){ //allow for some pixel(s) to be erronneous // TODO check to find the best with no ambiguities
+            //cout <<"nb:" << nb <<" pattern  "<< n<< " found " <<endl;
+            if (ret=-1)
+                ret=n;  //return the detected code >=0
+            else
+                ret=-2; //if multiple tag have been detected
+        }
+    //check that the used threshold was high enough to avoid detection in black squares
+    if (ret>=0)
+        if (thresholdForPattern[ret]<10)
+            ret=-3; //indicate  that this is a square quad
 
-
-
-    //  if (WaitBetweenImages) cvWaitKey(0);
-
-
-    return 0;
+    if (ret>=0){
+        int n=ret;
+        // draw the detected pattern name
+        char namePattern[9][2]={"B","W","O","X","Y","Y","Y","Y","+"};
+        CvFont font;
+        cvInitFont(&font, CV_FONT_HERSHEY_SIMPLEX, 1, 1, 0, 1);
+        CvPoint ptt;
+        ptt.x =0;
+        ptt.y =0;
+        for (int l=0;l<4;l++){
+            ptt.x=ptt.x+(int)quads->corners[l]->pt.x;
+            ptt.y=ptt.y+(int)quads->corners[l]->pt.y;
+        }
+        ptt.x=(ptt.x/4)-11;
+        ptt.y=(ptt.y/4)+11;
+        cvPutText(imageDebugColor, namePattern[n], ptt, &font, CV_RGB(0,255,0));
+    }
+    return ret;
 }
 
 //===========================================================================
@@ -420,7 +367,7 @@ int cvFindChessboardCorners3( const void* arr, CvSize pattern_size,
     int flags					=  1;	// not part of the function call anymore!
     int max_count				=  0;
     int max_dilation_run_ID		= -1;
-    const int min_dilations		=  1;
+    const int min_dilations		=  1; //0; //bvdp: attempt to avoid deletion of quad that are thin due to its orientation, instead of 1;
     const int max_dilations		=  6;
     int found					=  0;
     CvMat* norm_img				=  0;
@@ -555,7 +502,8 @@ int cvFindChessboardCorners3( const void* arr, CvSize pattern_size,
         if (VisualizeResults) {
             cvNamedWindow( "Original Image", 1 );
             cvShowImage( "Original Image", img);
-            //cvSaveImage("pictureVis/OrigImg.png", img);
+            cvSaveImage("pictureVis/OrigImg.png", img);
+            cvSaveImage("pictureVis/TreshImg.png", thresh_img);
             if (WaitBetweenImages) cvWaitKey(0);
         }
         //END------------------------------------------------------------------------
@@ -593,7 +541,7 @@ int cvFindChessboardCorners3( const void* arr, CvSize pattern_size,
         if (VisualizeResults) {
             cvNamedWindow( "After adaptive Threshold (and Dilation)", 1 );
             cvShowImage( "After adaptive Threshold (and Dilation)", thresh_img);
-            //cvSaveImage("pictureVis/afterDilation.png", thresh_img);
+            cvSaveImage("pictureVis/afterDilation.png", thresh_img);
             if (WaitBetweenImages) cvWaitKey(0);
         }
         //END------------------------------------------------------------------------
@@ -605,6 +553,11 @@ int cvFindChessboardCorners3( const void* arr, CvSize pattern_size,
         // because otherwise we risk screwing up filters like cvSmooth()
         cvRectangle( thresh_img, cvPoint(0,0), cvPoint(thresh_img->cols-1,
                                                        thresh_img->rows-1), CV_RGB(255,255,255), 3, 8);
+
+        //bvdp, hack to debug icvGenerateQuads
+        //thresh_img = cvLoadImageM( "pictureVis/afterDilationCleanedByHand3.png", 0 );
+        //thresh_img = cvLoadImageM( "pictureVis/afterDilationCleanedByHand8.png", 0 );
+         //cvSaveImage("pictureVis/afterDilationCleanedByHandActu.png", thresh_img);
 
 
         // Generate quadrangles in the following function
@@ -648,7 +601,7 @@ int cvFindChessboardCorners3( const void* arr, CvSize pattern_size,
                 cvLine( imageCopy22, pt[3], pt[0], CV_RGB(255,255,0), 1, 8 );
             }
             cvShowImage( "all found quads per dilation run", imageCopy22);
-            //cvSaveImage("pictureVis/allFoundQuads.png", imageCopy22);
+            cvSaveImage("pictureVis/allFoundQuads.png", imageCopy22);
             if (WaitBetweenImages) cvWaitKey(0);
         }
         //END------------------------------------------------------------------------
@@ -683,7 +636,7 @@ int cvFindChessboardCorners3( const void* arr, CvSize pattern_size,
                 }
             }
             cvShowImage( "quads with neighbors", imageCopy3);
-            //cvSaveImage("pictureVis/allFoundNeighbors.png", imageCopy3);
+            cvSaveImage("pictureVis/allFoundNeighbors.png", imageCopy3);
             if (WaitBetweenImages) cvWaitKey(0);
         }
         //END------------------------------------------------------------------------
@@ -856,6 +809,7 @@ int cvFindChessboardCorners3( const void* arr, CvSize pattern_size,
         IplConvKernel *kernel1 = cvCreateStructuringElementEx(3,3,1,1,CV_SHAPE_CROSS,NULL);
         IplConvKernel *kernel2 = cvCreateStructuringElementEx(3,3,1,1,CV_SHAPE_RECT,NULL);
 
+        //BVDP TODO: this has already been done, may be save the different images instead of recomputing it...
         if (dilations >= 1)
             cvDilate( thresh_img, thresh_img, kernel1, 1);
         if (dilations >= 2)
@@ -878,6 +832,8 @@ int cvFindChessboardCorners3( const void* arr, CvSize pattern_size,
             cvNamedWindow( "PART2: Starting Point", 1 );
             imageCopy23 = cvCreateImage( cvGetSize(thresh_img), 8, 3 );
             cvCvtColor( thresh_img, imageCopy23, CV_GRAY2BGR );
+            //bvdp: to show the image before drawing the quads
+            cvSaveImage("pictureVis/part2StartB.png", imageCopy23);
 
             CvPoint *pt = new CvPoint[4];
             for( int kkk = 0; kkk < max_count; kkk++ )
@@ -896,7 +852,8 @@ int cvFindChessboardCorners3( const void* arr, CvSize pattern_size,
             sprintf(str,"Dilation Run No.: %i",dilations);
             CvFont font;
             cvInitFont(&font, CV_FONT_HERSHEY_SIMPLEX, 0.5, 0.5, 0, 2);
-            //cvPutText(imageCopy23, str, cvPoint(20,20), &font, CV_RGB(0,255,0));
+            //bvdp uncommented, todo check it cannot fail:
+            cvPutText(imageCopy23, str, cvPoint(20,20), &font, CV_RGB(0,255,0));
 
             cvShowImage( "PART2: Starting Point", imageCopy23);
             cvSaveImage("pictureVis/part2Start.png", imageCopy23);
@@ -2375,6 +2332,8 @@ static int mrAugmentBestRun( CvCBQuad *new_quads, int new_quad_count, int new_di
 
 
 
+
+
 //===========================================================================
 // GENERATE QUADRANGLES
 //===========================================================================
@@ -2392,6 +2351,15 @@ icvGenerateQuads( CvCBQuad **out_quads, CvCBCorner **out_corners,
     // Initializations
     int quad_count = 0;
     CvMemStorage *temp_storage = 0;
+
+
+
+
+    IplImage* imageCopyCol;
+    if (VisualizeResults) {
+        imageCopyCol = cvCreateImage( cvGetSize(image), 8, 3 );
+    }
+
 
     if( out_quads )
         *out_quads = 0;
@@ -2415,7 +2383,6 @@ icvGenerateQuads( CvCBQuad **out_quads, CvCBCorner **out_corners,
     // Empiric sower bound for the size of allowable quadrangles.
     // MARTIN, modified: Added "*0.1" in order to find smaller quads.
     min_size = cvRound( image->cols * image->rows * .03 * 0.01 * 0.92 * 0.1);
-
 
     // Create temporary storage for contours and the sequence of pointers to
     // found quadrangles
@@ -2445,9 +2412,10 @@ icvGenerateQuads( CvCBQuad **out_quads, CvCBCorner **out_corners,
         // reality multiple blurred and sticked together squares.
         if( CV_IS_SEQ_HOLE(src_contour) && rect.width*rect.height >= min_size )
         {
-            int min_approx_level = 2, max_approx_level;
+            int min_approx_level = 1; //BVDP instead of 2
+            int max_approx_level;
             if (firstRun == true)
-                max_approx_level = 3;
+                max_approx_level = 5; //BVDP instead of 3;, takes longer but can help with uadrangles that are too curved . ideally these value should be dependent of the size of the image
             else
                 max_approx_level = MAX_CONTOUR_APPROX;
             int approx_level;
@@ -2462,6 +2430,19 @@ icvGenerateQuads( CvCBQuad **out_quads, CvCBCorner **out_corners,
                 dst_contour = cvApproxPoly( dst_contour, sizeof(CvContour), temp_storage,
                                             CV_POLY_APPROX_DP, (float)approx_level );
 
+                //BVDP TODO: problem: number of corners go directly to 3 for thin quads
+                //maybe reimplement ~/Bureau/developpement/openCV/opencv-2.4.9/modules/imgproc/src/approx.cpp
+/*
+                if (VisualizeResults) {
+                    cvCvtColor( image, imageCopyCol, CV_GRAY2BGR );
+                    CvPoint pt;
+                    for( i = 0; i < dst_contour->total; i++ ){
+                        pt = *(CvPoint*)cvGetSeqElem(dst_contour, i);
+                        cvCircle(imageCopyCol,pt, 2,CV_RGB(255,255,0), 1, 8 );
+                    }
+                    cvSaveImage("pictureVis/allFoundCorners.png", imageCopyCol);
+                }
+*/
                 if( dst_contour->total == 4 )
                     break;
             }
@@ -2628,9 +2609,6 @@ static int mrWriteCorners( CvCBQuad **output_quads, int count, CvSize pattern_si
     //Grid corners positions in 2D arrays
     float tabX [pattern_size.height+1][pattern_size.width+1];
     float tabY [pattern_size.height+1][pattern_size.width+1];
-
-
-
     // If in a given direction the target pattern size is reached, we know exactly how
     // the checkerboard is oriented.
     // Else we need to prepare enought "dummy" corners for the worst case.
@@ -2765,6 +2743,7 @@ static int mrWriteCorners( CvCBQuad **output_quads, int count, CvSize pattern_si
         {
             float x=tabX[i][j];
             float y=tabY[i][j];
+            //TODO: IMPORTANT avoid positions outside the image for cornerSubPix
             listP1[j+i*pattern_size.width]=(cv::Point2f(x,y));
         }
     //http://docs.opencv.org/2.4/modules/imgproc/doc/feature_detection.html#cornersubpix
@@ -2776,8 +2755,10 @@ static int mrWriteCorners( CvCBQuad **output_quads, int count, CvSize pattern_si
   //  cornerSubPix(im, listP1,cv::Size(15,15), cv::Size(-1,-1), cv::TermCriteria(cv::TermCriteria::COUNT+cv::TermCriteria::EPS,100000,0.00001));
 
    // cornerSubPix(im, listP1,cv::Size(5,5), cv::Size(-1,-1), cv::TermCriteria(cv::TermCriteria::COUNT,100000,0));
+//TODO: this call can segfault, maybe because of listP1 containting points outside the image boundaries
 
     cornerSubPix(im, listP1,cv::Size(7,7), cv::Size(1,1), cv::TermCriteria(cv::TermCriteria::COUNT,1000,0));
+
 
    //(cv::InputArray)*image
     for (int i=0;i<pattern_size.height;i++)
@@ -2787,28 +2768,48 @@ static int mrWriteCorners( CvCBQuad **output_quads, int count, CvSize pattern_si
             tabX[i][j]=p.x;
             tabY[i][j]=p.y;
         }
+    int res=11;
+    //to store the reconstructed tag
+    CvSize tag_size;    tag_size.height=res;    tag_size.width=res;
+    IplImage* imageRect = cvCreateImage( tag_size, 8, 1 );
+    IplImage* imageDebug= cvCreateImage( cvGetSize(image), 8, 1 );
+    cvCopy( image, imageDebug);
+    IplImage* imageDebugColor= cvCreateImage( cvGetSize(image), 8, 3 );
+    cvCvtColor( image, imageDebugColor, CV_GRAY2BGR );
 
     //recreate a 2D array of quads containting Black and Whites quads for tag decoding
     for (int i=0;i<maxPattern_sizeRow-1;i++)
-    for (int j=0;j<maxPattern_sizeColumn-1;j++)
-    {
-        for (int k=0;k<4;k++)
-            tabq [i][j].corners[k]=new   CvCBCorner;
+        for (int j=0;j<maxPattern_sizeColumn-1;j++) {
+            for (int k=0;k<4;k++)
+                tabq [i][j].corners[k]=new   CvCBCorner;
+            tabq [i][j].corners[0]->pt.x=tabX[i][j];
+            tabq [i][j].corners[0]->pt.y=tabY[i][j];
+            tabq [i][j].corners[1]->pt.x=tabX[i][j+1];
+            tabq [i][j].corners[1]->pt.y=tabY[i][j+1];
+            tabq [i][j].corners[2]->pt.x=tabX[i+1][j+1];
+            tabq [i][j].corners[2]->pt.y=tabY[i+1][j+1];
+            tabq [i][j].corners[3]->pt.x=tabX[i+1][j];
+            tabq [i][j].corners[3]->pt.y=tabY[i+1][j];
+#define NOK 1
+            if ( (tabX[i][j]>NOK) && (tabX[i+1][j]>NOK) && (tabX[i][j+1]>NOK) && (tabX[i+1][j+1]>NOK) &&
+                 (tabY[i][j]>NOK) && (tabY[i+1][j]>NOK) && (tabY[i][j+1]>NOK) && (tabY[i+1][j+1]>NOK) ){
+                int value=determineQuadCode( &tabq [i][j], res,imageDebug,imageRect,true, imageDebugColor);
+                int nb=1+j+i*(maxPattern_sizeRow-1);
+                if (value>=0){
+                    cout <<"nb:" << nb;
+                    cout <<" pattern  "<< value<< " found " <<endl;
+                    cvShowImage( "reconstructed tag", imageRect);
+                    char name[1000];
+                    sprintf(name,"pictureVis/reconstructedtag_%04d.png",nb );
+                    cvSaveImage(name, imageRect);
+                }
+            }
+        }
+    cvShowImage( "all found quads per dilation run", imageDebugColor);
+    cvSaveImage("pictureVis/allFoundQuadsB.png", imageDebugColor);
+    //  if (WaitBetweenImages) cvWaitKey(0);
 
-        tabq [i][j].corners[0]->pt.x=tabX[i][j];
-        tabq [i][j].corners[0]->pt.y=tabY[i][j];
 
-        tabq [i][j].corners[1]->pt.x=tabX[i][j+1];
-        tabq [i][j].corners[1]->pt.y=tabY[i][j+1];
-
-        tabq [i][j].corners[2]->pt.x=tabX[i+1][j+1];
-        tabq [i][j].corners[2]->pt.y=tabY[i+1][j+1];
-
-        tabq [i][j].corners[3]->pt.x=tabX[i+1][j];
-        tabq [i][j].corners[3]->pt.y=tabY[i+1][j];
-
-        int value=determineQuadCode( &tabq [i][j], 11,image);
-    }
     // Write to the corner matrix size info file
     cornerInfo << maxPattern_sizeRow<< " " << maxPattern_sizeColumn << endl;
 
@@ -2817,7 +2818,6 @@ static int mrWriteCorners( CvCBQuad **output_quads, int count, CvSize pattern_si
     cornersX.close();
     cornersY.close();
     cornerInfo.close();
-
 
     // check whether enough corners have been found
     if (corner_count >= min_number_of_corners)
