@@ -119,8 +119,8 @@ static int mrWriteCorners( CvCBQuad **output_quads, int count, CvSize pattern_si
 
 int determineQuadCode( CvCBQuad *quads, int res, CvMat *image);
 //___________________________________________________________________________
-int determineQuadCode( CvCBQuad *quads, int res, IplImage *image,IplImage* imageRect,bool VisualizeResultsB, IplImage* imageDebugColor){
-    static int nb=0;
+int determineQuadCode( CvCBQuad *quads, int res, IplImage *image,IplImage* imageRect,bool VisualizeResultsB, IplImage* imageDebugColor,int debugNumber){
+    //static int nb=0;
     unsigned char    patternW[11*11];
     unsigned char    patternB[11*11];
     unsigned char    pattern0[11*11]={0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,0,0,0,0,0,1,0,0,0,0,0,1,0,0,0,0,1,0,0,0,0,0,1,0,0,0,0,1,0,0,0,0,0,1,0,0,0,0,1,0,0,0,0,0,1,0,0,0,0,1,0,0,0,0,0,1,0,0,0,0,0,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
@@ -130,7 +130,18 @@ int determineQuadCode( CvCBQuad *quads, int res, IplImage *image,IplImage* image
     unsigned char    patternY3[11*11];
     unsigned char    patternY4[11*11];
     unsigned char    patternP[11*11]={0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,1,1,1,1,1,1,1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
-    const unsigned int nb_patterns=9;
+    unsigned char    patternD[11*11]={0,0,0,0,0,0,0,0,0,0,0,
+                                      0,0,0,0,0,0,0,0,0,0,0,
+                                      0,0,0,0,0,1,0,0,0,0,0,
+                                      0,0,0,0,1,0,1,0,0,0,0,
+                                      0,0,0,1,0,0,0,1,0,0,0,
+                                      0,0,1,0,0,0,0,0,1,0,0,
+                                      0,0,0,1,0,0,0,1,0,0,0,
+                                      0,0,0,0,1,0,1,0,0,0,0,
+                                      0,0,0,0,0,1,0,0,0,0,0,
+                                      0,0,0,0,0,0,0,0,0,0,0,
+                                      0,0,0,0,0,0,0,0,0,0,0};
+    const unsigned int nb_patterns=10;
     unsigned char    nbBlacksInPattern[nb_patterns];
     //   int scorePattern[nb_patterns];
     unsigned char *listPattern[nb_patterns];
@@ -143,6 +154,7 @@ int determineQuadCode( CvCBQuad *quads, int res, IplImage *image,IplImage* image
     listPattern[6]=patternY3;
     listPattern[7]=patternY4;
     listPattern[8]=patternP;
+    listPattern[9]=patternD;
     char reconstructedPattern[11*11];
 
     for (int u=0;u<res;u++)
@@ -157,6 +169,7 @@ int determineQuadCode( CvCBQuad *quads, int res, IplImage *image,IplImage* image
             patternX[u+v*res]= 1-patternX[u+v*res];
             patternY[u+v*res]= 1-patternY[u+v*res];
             patternP[u+v*res]= 1-patternP[u+v*res];
+            patternD[u+v*res]= 1-patternD[u+v*res];
         }
     //rotate Y pattern
     for (int u=0;u<res;u++)
@@ -173,8 +186,8 @@ int determineQuadCode( CvCBQuad *quads, int res, IplImage *image,IplImage* image
                 if (listPattern[n][u+v*res]==0)
                     nbBlacksInPattern[n]++;
             }
-    nb++;
-    if (0){
+    //nb++;
+    /*if (0){
         cout <<"nb:" << nb<< endl;
         for (int i=0;i<4;i++){
             cout <<"i:" << i<< endl;
@@ -183,7 +196,7 @@ int determineQuadCode( CvCBQuad *quads, int res, IplImage *image,IplImage* image
             cout <<"x:" << quads->corners[i]->pt.x << endl;
             cout <<"y:" << quads->corners[i]->pt.y << endl;
         }
-    }
+    }*/
     if (VisualizeResultsB) {
         CvCBQuad* print_quad = quads;
         CvPoint pt[4];
@@ -316,7 +329,7 @@ int determineQuadCode( CvCBQuad *quads, int res, IplImage *image,IplImage* image
     //bvdp: TODO: if 2 patterns have been found, the third should be at a known position, so may be make the acceptable error higher for the remaining...
     for (int n=2;n<nb_patterns;n++) //skip the black & white
         if (errorForPattern[n]<= 1){ //allow for some pixel(s) to be erronneous // TODO check to find the best with no ambiguities
-            //cout <<"nb:" << nb <<" pattern  "<< n<< " found " <<endl;
+            //cout <<"debugNumber:" << debugNumber <<" pattern  "<< n<< " found " <<endl;
             if (ret=-1)
                 ret=n;  //return the detected code >=0
             else
@@ -330,7 +343,7 @@ int determineQuadCode( CvCBQuad *quads, int res, IplImage *image,IplImage* image
     if (ret>=0){
         int n=ret;
         // draw the detected pattern name
-        char namePattern[9][2]={"B","W","O","X","Y","Y","Y","Y","+"};
+        char namePattern[10][2]={"B","W","O","X","Y","Y","Y","Y","+","D"};
         CvFont font;
         cvInitFont(&font, CV_FONT_HERSHEY_SIMPLEX, 1, 1, 0, 1);
         CvPoint ptt;
@@ -790,6 +803,8 @@ int cvFindChessboardCorners3( const void* arr, CvSize pattern_size,
     found = mrWriteCorners( output_quad_group, max_count, pattern_size, min_number_of_corners,img);
     if (found == -1 || found == 1)
         EXIT;
+
+    cout << "SECOND ATTEMPT TO DETECT THE PATTERN!!!"<<endl;
 
     // PART 2: AUGMENT LARGEST PATTERN
     //-----------------------------------------------------------------------
@@ -2332,7 +2347,7 @@ static int mrAugmentBestRun( CvCBQuad *new_quads, int new_quad_count, int new_di
 
 
 /*
-BVDP:  This are copy of the two openCV functions
+BVDP:  This are copy of the two openCV functions in modules/imgproc/src/approx.cpp
 template<typename T> static CvSeq* icvApproxPolyDP( CvSeq* src_contour, int header_size,  CvMemStorage* storage, double eps )
 CV_IMPL CvSeq* cvApproxPoly
 
@@ -3145,8 +3160,8 @@ static int mrWriteCorners( CvCBQuad **output_quads, int count, CvSize pattern_si
 #define NOK 1
             if ( (tabX[i][j]>NOK) && (tabX[i+1][j]>NOK) && (tabX[i][j+1]>NOK) && (tabX[i+1][j+1]>NOK) &&
                  (tabY[i][j]>NOK) && (tabY[i+1][j]>NOK) && (tabY[i][j+1]>NOK) && (tabY[i+1][j+1]>NOK) ){
-                int value=determineQuadCode( &tabq [i][j], res,imageDebug,imageRect,true, imageDebugColor);
                 int nb=1+j+i*(maxPattern_sizeRow-1);
+                int value=determineQuadCode( &tabq [i][j], res,imageDebug,imageRect,true, imageDebugColor,nb);
                 if (value>=0){
                     cout <<"nb:" << nb;
                     cout <<" pattern  "<< value<< " found " <<endl;
