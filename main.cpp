@@ -48,6 +48,20 @@ static int cvFindChessboardCorners3( const void* arr, CvSize pattern_size,
                              int min_number_of_corners );
 */	
 
+
+//launch with these arguments  -w 8 -h 8 -m 64 pictures.txt
+/*
+je configure dans Qt comme arguments au lancement:
+ -w 8 -h 8 -m 64 pictures.txt
+
+et en fait il converti le -h en --help si je demande à qt de lancer dans un terminal....
+
+app launched via: /media/HD500GO/zodiac/matlab/fisheye/autoCornerTagFinder_linux/FindCorners.exe -w 8 8 -m 64 pictures.txt --help
+Appuyez sur <ENTRÉE> pour fermer cette fenêtre...
+
+donc il faudra changer le choix de la taille de mire de -h  vers autre chose...
+
+  */
 //===========================================================================
 // MAIN LOOP 
 //===========================================================================
@@ -58,7 +72,9 @@ int main( int argc, char** argv )
 
 
 	// Initializations
-	CvSize board_size				= {7,6};
+    CvSize board_size;
+    board_size.width=8;
+    board_size.height=8;
 	const char* input_filename		= 0;
 	CvCapture* capture				= 0;
 	FILE* f							= 0;
@@ -67,9 +83,11 @@ int main( int argc, char** argv )
 	CvSeq* image_points_seq			= 0;
 	int elem_size;
 	CvPoint2D32f* image_points_buf	= 0;
-	CvSize img_size					= {0,0};
+    CvSize img_size;
+    img_size.width=0;
+    img_size.height=0;
 	int found						= -2;
-	int min_number_of_corners		= 42;
+    int min_number_of_corners		= 64;
 	input_filename					= "pictures.txt";
 	//input_filename					= "myVideo2.avi";
 
@@ -163,7 +181,7 @@ int main( int argc, char** argv )
 		// Initializations
 		IplImage *view = 0, *view_gray = 0;
 		int count = 0, blink = 0;
-		CvSize text_size = {0,0};
+        CvSize text_size; text_size.width=0;text_size.height=0;
 		int base_line = 0;
 		// Load the correct image...
 		if( f && fgets( imagename, sizeof(imagename)-2, f ))

@@ -31,6 +31,8 @@ If you use this code, please cite the following articles:
 //===========================================================================
 // Include files
 #include <opencv.hpp>
+
+
 #include <opencv2/core/internal.hpp>
 
 
@@ -492,6 +494,16 @@ int cvFindChessboardCorners3( const void* arr, CvSize pattern_size,
     cvAdaptiveThreshold( img, thresh_img, 255, CV_ADAPTIVE_THRESH_GAUSSIAN_C, CV_THRESH_BINARY, block_size, 0 );
     cvCopy( thresh_img, thresh_img_save);
 
+    //VISUALIZATION--------------------------------------------------------------
+    if (VisualizeResults) {
+        cvNamedWindow( "Original Image", 1 );
+        cvShowImage( "Original Image", img);
+        cvSaveImage("pictureVis/OrigImg.png", img);
+        cvSaveImage("pictureVis/TreshImg.png", thresh_img);
+        if (WaitBetweenImages) cvWaitKey(0);
+    }
+    //END------------------------------------------------------------------------
+
 
     // PART 1: FIND LARGEST PATTERN
     //-----------------------------------------------------------------------
@@ -510,16 +522,6 @@ int cvFindChessboardCorners3( const void* arr, CvSize pattern_size,
             time0_2 = (float) (clock() - start_time) / CLOCKS_PER_SEC;
             FindChessboardCorners2 << "Time 0.2 for cvFindChessboardCorners2 was " << time0_2 << " seconds." << endl;
         }
-
-        //VISUALIZATION--------------------------------------------------------------
-        if (VisualizeResults) {
-            cvNamedWindow( "Original Image", 1 );
-            cvShowImage( "Original Image", img);
-            cvSaveImage("pictureVis/OrigImg.png", img);
-            cvSaveImage("pictureVis/TreshImg.png", thresh_img);
-            if (WaitBetweenImages) cvWaitKey(0);
-        }
-        //END------------------------------------------------------------------------
 
 
         // MARTIN's Code
@@ -554,7 +556,9 @@ int cvFindChessboardCorners3( const void* arr, CvSize pattern_size,
         if (VisualizeResults) {
             cvNamedWindow( "After adaptive Threshold (and Dilation)", 1 );
             cvShowImage( "After adaptive Threshold (and Dilation)", thresh_img);
-            cvSaveImage("pictureVis/afterDilation.png", thresh_img);
+            char name[1000];
+            sprintf(name,"pictureVis/afterDilation-%02d.tif",dilations);
+            cvSaveImage(name, thresh_img);
             if (WaitBetweenImages) cvWaitKey(0);
         }
         //END------------------------------------------------------------------------
@@ -614,7 +618,9 @@ int cvFindChessboardCorners3( const void* arr, CvSize pattern_size,
                 cvLine( imageCopy22, pt[3], pt[0], CV_RGB(255,255,0), 1, 8 );
             }
             cvShowImage( "all found quads per dilation run", imageCopy22);
-            cvSaveImage("pictureVis/allFoundQuads.png", imageCopy22);
+            char name[1000];
+            sprintf(name,"pictureVis/allFoundQuads-%02d.tif",dilations);
+            cvSaveImage(name, imageCopy22);
             if (WaitBetweenImages) cvWaitKey(0);
         }
         //END------------------------------------------------------------------------
@@ -649,7 +655,9 @@ int cvFindChessboardCorners3( const void* arr, CvSize pattern_size,
                 }
             }
             cvShowImage( "quads with neighbors", imageCopy3);
-            cvSaveImage("pictureVis/allFoundNeighbors.png", imageCopy3);
+            char name[1000];
+            sprintf(name,"pictureVis/allFoundNeighbors-%02d.tif",dilations);
+            cvSaveImage(name, imageCopy3);
             if (WaitBetweenImages) cvWaitKey(0);
         }
         //END------------------------------------------------------------------------
@@ -747,6 +755,9 @@ int cvFindChessboardCorners3( const void* arr, CvSize pattern_size,
                             }
                         }
                     }
+                    char name[1000];
+                    sprintf(name,"pictureVis/CornersIncreasingOrder-%02d-%05d.tif",dilations,group_idx);
+                    cvSaveImage(name, imageCopy11);
                     if (WaitBetweenImages) cvWaitKey(0);
                 }
                 //END------------------------------------------------------------------------
@@ -754,7 +765,6 @@ int cvFindChessboardCorners3( const void* arr, CvSize pattern_size,
 
                 // Allocate memory
                 CV_CALL( output_quad_group = (CvCBQuad**)cvAlloc( sizeof(output_quad_group[0]) * ((pattern_size.height+2) * (pattern_size.width+2)) ));
-
 
                 // The following function copies every member of "quad_group"
                 // to "output_quad_group", because "quad_group" will be
@@ -764,7 +774,6 @@ int cvFindChessboardCorners3( const void* arr, CvSize pattern_size,
                 mrCopyQuadGroup( quad_group, output_quad_group, max_count );
             }
         }
-
 
         // Free the allocated variables
         cvFree( &quads );
@@ -1965,7 +1974,7 @@ static void mrFindQuadNeighbors2( CvCBQuad *quads, int quad_count, int dilation)
                 if( j < 4 )
                     continue;
 
-
+//BVDP: here is the computation of the corner location
                 // We've found one more corner - remember it
                 closest_corner->pt.x = (pt.x + closest_corner->pt.x) * 0.5f;
                 closest_corner->pt.y = (pt.y + closest_corner->pt.y) * 0.5f;
@@ -3124,7 +3133,9 @@ static int mrWriteCorners( CvCBQuad **output_quads, int count, CvSize pattern_si
    // cornerSubPix(im, listP1,cv::Size(5,5), cv::Size(-1,-1), cv::TermCriteria(cv::TermCriteria::COUNT,100000,0));
 //TODO: this call can segfault, maybe because of listP1 containting points outside the image boundaries
 
-    cornerSubPix(im, listP1,cv::Size(7,7), cv::Size(1,1), cv::TermCriteria(cv::TermCriteria::COUNT,1000,0));
+    //cornerSubPix(im, listP1,cv::Size(7,7), cv::Size(1,1), cv::TermCriteria(cv::TermCriteria::COUNT,1000,0));
+
+    cornerSubPix(im, listP1,cv::Size(7,7), cv::Size(1,1), cv::TermCriteria(cv::TermCriteria::COUNT+cv::TermCriteria::EPS,40,0.001));
 
 
    //(cv::InputArray)*image
