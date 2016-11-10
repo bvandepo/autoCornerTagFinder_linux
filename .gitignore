@@ -1,0 +1,7 @@
+*.exe
+*.o
+*.jpg
+*.ppm
+*.png
+*.tif
+./pictureVis/*
