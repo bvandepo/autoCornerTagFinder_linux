@@ -35,6 +35,7 @@ If you use this code, please cite the following articles:
 
 #include <opencv2/core/internal.hpp>
 
+#include "cvcalibinit3.h"
 
 #include <Eigen/Dense>
 
@@ -43,83 +44,14 @@ If you use this code, please cite the following articles:
 using namespace std;
 using std::ifstream;
 
-
-// Defines
-#define MAX_CONTOUR_APPROX  7
-
+//global variables :(
 bool VisualizeResults=true;  // Turn on visualization
 bool WaitBetweenImages=false; // wait for the user to press a key between image, display will be produced only if this variable is set to true
 bool SaveTimerInfo=true; // Elapse the function duration times
 
 
-// Definition Contour Struct
-typedef struct CvContourEx
-{
-    CV_CONTOUR_FIELDS()
-    int counter;
-}
-CvContourEx;
 
 
-// Definition Corner Struct
-typedef struct CvCBCorner
-{
-    CvPoint2D32f pt;					// X and y coordinates
-    int row;							// Row and column of the corner
-    int column;							// in the found pattern
-    bool needsNeighbor;					// Does the corner require a neighbor?
-    int count;							// number of corner neighbors
-    struct CvCBCorner* neighbors[4];	// pointer to all corner neighbors
-}
-CvCBCorner;
-
-
-// Definition Quadrangle Struct
-// This structure stores information about the chessboard quadrange
-typedef struct CvCBQuad
-{
-    int count;							// Number of quad neihbors
-    int group_idx;						// Quad group ID
-    float edge_len;						// Smallest side length^2
-    CvCBCorner *corners[4];				// Coordinates of quad corners
-    struct CvCBQuad *neighbors[4];		// Pointers of quad neighbors
-    bool labeled;						// Has this corner been labeled?
-}
-CvCBQuad;
-
-
-
-//===========================================================================
-// FUNCTION PROTOTYPES
-//===========================================================================
-static int icvGenerateQuads( CvCBQuad **quads, CvCBCorner **corners,
-                             CvMemStorage *storage, CvMat *image, int flags, int dilation,
-                             bool firstRun );
-
-static void mrFindQuadNeighbors2( CvCBQuad *quads, int quad_count, int dilation);
-
-static int mrAugmentBestRun( CvCBQuad *new_quads, int new_quad_count, int new_dilation, 
-                             CvCBQuad **old_quads, int old_quad_count, int old_dilation );
-
-static int icvFindConnectedQuads( CvCBQuad *quads, int quad_count, CvCBQuad **quad_group,
-                                  int group_idx,
-                                  CvMemStorage* storage, int dilation );
-
-static void mrLabelQuadGroup( CvCBQuad **quad_group, int count, CvSize pattern_size, 
-                              bool firstRun );
-
-static void mrCopyQuadGroup( CvCBQuad **temp_quad_group, CvCBQuad **out_quad_group, 
-                             int count );
-
-static int icvCleanFoundConnectedQuads( int quad_count, CvCBQuad **quads, 
-                                        CvSize pattern_size );
-
-static int mrWriteCorners( CvCBQuad **output_quads, int count, CvSize pattern_size,
-                           int min_number_of_corners, CvMat *image=NULL );
-
-
-
-int determineQuadCode( CvCBQuad *quads, int res, CvMat *image);
 //___________________________________________________________________________
 int determineQuadCode( CvCBQuad *quads, int res, IplImage *image,IplImage* imageRect,bool VisualizeResultsB, IplImage* imageDebugColor,int debugNumber){
     //static int nb=0;
@@ -1101,8 +1033,7 @@ int cvFindChessboardCorners3( const void* arr, CvSize pattern_size,
 //===========================================================================
 // If we found too many connected quads, remove those which probably do not 
 // belong.
-static int
-icvCleanFoundConnectedQuads( int quad_count, CvCBQuad **quad_group, CvSize pattern_size )
+int icvCleanFoundConnectedQuads( int quad_count, CvCBQuad **quad_group, CvSize pattern_size )
 {
     CvMemStorage *temp_storage = 0;
     CvPoint2D32f *centers = 0;
@@ -1233,8 +1164,7 @@ icvCleanFoundConnectedQuads( int quad_count, CvCBQuad **quad_group, CvSize patte
 //===========================================================================
 // FIND COONECTED QUADS
 //===========================================================================
-static int
-icvFindConnectedQuads( CvCBQuad *quad, int quad_count, CvCBQuad **out_group,
+int icvFindConnectedQuads( CvCBQuad *quad, int quad_count, CvCBQuad **out_group,
                        int group_idx, CvMemStorage* storage, int dilation )
 {
     //START TIMER
@@ -1305,7 +1235,7 @@ icvFindConnectedQuads( CvCBQuad *quad, int quad_count, CvCBQuad **out_group,
 //===========================================================================
 // LABEL CORNER WITH ROW AND COLUMN //DONE
 //===========================================================================
-static void mrLabelQuadGroup( CvCBQuad **quad_group, int count, CvSize pattern_size, bool firstRun )
+void mrLabelQuadGroup( CvCBQuad **quad_group, int count, CvSize pattern_size, bool firstRun )
 {
     //START TIMER
     ofstream LabelQuadGroup;
@@ -1737,7 +1667,7 @@ static void mrLabelQuadGroup( CvCBQuad **quad_group, int count, CvSize pattern_s
 // Copies all necessary information of every quad of the largest found group
 // into a new Quad struct array. 
 // This information is then again needed in PART 2 of the MAIN LOOP
-static void mrCopyQuadGroup( CvCBQuad **temp_quad_group, CvCBQuad **for_out_quad_group, int count )
+void mrCopyQuadGroup( CvCBQuad **temp_quad_group, CvCBQuad **for_out_quad_group, int count )
 {
     for (int i = 0; i < count; i++)
     {
@@ -1766,7 +1696,7 @@ static void mrCopyQuadGroup( CvCBQuad **temp_quad_group, CvCBQuad **for_out_quad
 //===========================================================================
 // This function replaces mrFindQuadNeighbors, which in turn replaced
 // icvFindQuadNeighbors
-static void mrFindQuadNeighbors2( CvCBQuad *quads, int quad_count, int dilation)
+void mrFindQuadNeighbors2( CvCBQuad *quads, int quad_count, int dilation)
 {
     //START TIMER
     ofstream FindQuadNeighbors2;
@@ -2008,7 +1938,7 @@ static void mrFindQuadNeighbors2( CvCBQuad *quads, int quad_count, int dilation)
 // "mrFindQuadNeighbors2"
 // The comparisons between two points and two lines could be computed in their
 // own function
-static int mrAugmentBestRun( CvCBQuad *new_quads, int new_quad_count, int new_dilation, 
+int mrAugmentBestRun( CvCBQuad *new_quads, int new_quad_count, int new_dilation,
                              CvCBQuad **old_quads, int old_quad_count, int old_dilation )
 {
     //START TIMER
@@ -2369,7 +2299,7 @@ in order to try to improve the polygonization for  quadrangles
 /* Ramer-Douglas-Peucker algorithm for polygon simplification */
 
 /* the version for integer point coordinates */
-template<typename T> static CvSeq*
+template<typename T> CvSeq*
 icvApproxPolyDP( CvSeq* src_contour, int header_size,
                  CvMemStorage* storage, double eps )
 {
@@ -2713,8 +2643,7 @@ cvApproxPoly( const void*  array, int  header_size,
 //===========================================================================
 // GENERATE QUADRANGLES
 //===========================================================================
-static int
-icvGenerateQuads( CvCBQuad **out_quads, CvCBCorner **out_corners,
+int icvGenerateQuads( CvCBQuad **out_quads, CvCBCorner **out_corners,
                   CvMemStorage *storage, CvMat *image, int flags, int dilation, bool firstRun )
 {
     //START TIMER
@@ -2941,7 +2870,7 @@ icvGenerateQuads( CvCBQuad **out_quads, CvCBCorner **out_corners,
 //===========================================================================
 // WRITE CORNERS TO FILE
 //===========================================================================
-static int mrWriteCorners( CvCBQuad **output_quads, int count, CvSize pattern_size, int min_number_of_corners, CvMat *image)
+int mrWriteCorners( CvCBQuad **output_quads, int count, CvSize pattern_size, int min_number_of_corners, CvMat *image)
 {
     // Initialize
     int corner_count = 0;
