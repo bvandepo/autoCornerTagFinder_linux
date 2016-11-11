@@ -67,9 +67,6 @@ donc il faudra changer le choix de la taille de mire de -h  vers autre chose...
 //===========================================================================
 int main( int argc, char** argv )
 {
-	// CHOOSE METHOD (0= Vladimir Vezhnevets, 1= Martin Rufli)
-	int method = 1;
-
 
 	// Initializations
     CvSize board_size;
@@ -237,19 +234,8 @@ int main( int argc, char** argv )
         }
 		img_size = cvGetSize(view);
 		
-
-		// Perform the corner finding algorithm
-		// 0 = old method, 1 = New method by Martin Rufli
-		if (method == 0)
-		{
-			//found = cvFindChessboardCorners1( view, board_size,
-			//		image_points_buf, &count, CV_CALIB_CB_ADAPTIVE_THRESH );
-		}
-		else
-		{
-            found = cvFindChessboardCorners3( view, board_size,
-					image_points_buf, &count, min_number_of_corners );
-		}
+        found = cvFindChessboardCorners3( view, board_size,
+                                          image_points_buf, &count, min_number_of_corners );
 
 		if( !view )
 			break;
