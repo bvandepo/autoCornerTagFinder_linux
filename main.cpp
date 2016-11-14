@@ -104,6 +104,10 @@ int main( int argc, char** argv )
 	for(int i = 1; i < argc; i++ )
 	{
 		const char* s = argv[i];
+        if( strcmp( s, "--help" ) == 0 )
+        {
+            cout <<"this will be helping someday...\n";
+        }
 		if( strcmp( s, "-w" ) == 0 )
 		{
 			if( sscanf( argv[++i], "%u", &board_size.width ) != 1 || board_size.width <= 0 )
