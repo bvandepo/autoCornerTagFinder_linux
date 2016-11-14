@@ -17,26 +17,15 @@ TEMPLATE = app
 DESTDIR = ./
 OBJECTS_DIR = ./
 
-
-
-
-#INCLUDEPATH += /home/bvandepo/Bureau/developpement/openCV/opencv-2.4.9/include/opencv
-#INCLUDEPATH += /home/bvandepo/Bureau/developpement/openCV/opencv-2.4.9/include/opencv2
-#QMAKE_LIBDIR     += /usr/local/MATLAB/R2014a/bin/glnxa64/
-
-
-#LIBS+= -L/usr/local/lib/ -lopencv_core -lopencv_highgui -lopencv_imgproc -lopencv_calib3d
-LIBS+= -lopencv_core -lopencv_highgui -lopencv_imgproc -lopencv_calib3d
-
-SOURCES +=   main.cpp cvcalibinit3.cpp
+SOURCES += main.cpp cvcalibinit3.cpp
 HEADERS += cvcalibinit3.h
+DISTFILES += pictures.txt
 
+#CONFIG+=OPENCV2411LOCAL
+CONFIG+=OPENCV31SYSTEM
 
-
+OPENCV2411LOCAL {
 OPENCV_PATH =/media/HD500GO/saveHDDgarossos/developpement/openCV/opencv-2.4.11/
-#OPENCV_PATH =/usr/local/
-
-
 INCLUDEPATH += $${OPENCV_PATH}/include/
 INCLUDEPATH += $${OPENCV_PATH}/include/opencv2/
 INCLUDEPATH += $${OPENCV_PATH}/modules/highgui/include/
@@ -50,14 +39,28 @@ INCLUDEPATH += $${OPENCV_PATH}/modules/contrib/include/
 INCLUDEPATH += $${OPENCV_PATH}/modules/features2d/include/
 INCLUDEPATH += $${OPENCV_PATH}/modules/objdetect/include/
 INCLUDEPATH += $${OPENCV_PATH}/modules/calib3d/include/
-
 LIBS +=  -L$${OPENCV_PATH}/build/lib
+LIBS+= -lopencv_core -lopencv_highgui -lopencv_imgproc -lopencv_calib3d
+}
+
+OPENCV31SYSTEM {
+OPENCV_PATH =/usr/local/
+INCLUDEPATH += $${OPENCV_PATH}/include/
+INCLUDEPATH += $${OPENCV_PATH}/include/opencv2/
+LIBS +=  -L$${OPENCV_PATH}/lib
+LIBS+= -lopencv_core -lopencv_highgui -lopencv_imgproc -lopencv_calib3d -lopencv_imgcodecs -lopencv_videoio
+}
 
 INCLUDEPATH += /usr/include/eigen3/
 INCLUDEPATH += ./
-#INCLUDEPATH += /usr/local/include
-#INCLUDEPATH += /usr/local/include/opencv2
 MAKE_LIBDIR     += /usr/local/lib/
 
-DISTFILES += \
-    pictures.txt
+
+#INCLUDEPATH += /usr/local/include
+#INCLUDEPATH += /usr/local/include/opencv2
+#INCLUDEPATH += /home/bvandepo/Bureau/developpement/openCV/opencv-2.4.9/include/opencv
+#INCLUDEPATH += /home/bvandepo/Bureau/developpement/openCV/opencv-2.4.9/include/opencv2
+#QMAKE_LIBDIR     += /usr/local/MATLAB/R2014a/bin/glnxa64/
+#LIBS+= -L/usr/local/lib/ -lopencv_core -lopencv_highgui -lopencv_imgproc -lopencv_calib3d
+#OPENCV_PATH =/usr/local/
+

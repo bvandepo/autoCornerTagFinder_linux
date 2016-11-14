@@ -33,9 +33,13 @@ If you use this code, please cite the following articles:
 #include <opencv.hpp>
 
 
-#include <opencv2/core/internal.hpp>
+//#include <opencv2/core/internal.hpp>
 
 #include "cvcalibinit3.h"
+#define __BEGIN__ __CV_BEGIN__
+#define __END__ __CV_END__
+#define EXIT __CV_EXIT__
+
 
 #include <Eigen/Dense>
 
@@ -571,7 +575,11 @@ int cvFindChessboardCorners3( const void* arr, CvSize pattern_size,
             CvPoint pt;
             int scale = 0;
             int line_type = CV_AA;
-            CvScalar color = {{0,0,255}};
+            CvScalar color;
+            color.val[0]=0;
+            color.val[1]=0;
+            color.val[2]=255;
+            //= {{0,0,255}};
             for( int kkk = 0; kkk < quad_count; kkk++ )
             {
                 CvCBQuad* print_quad2 = &quads[kkk];
@@ -1042,7 +1050,10 @@ int icvCleanFoundConnectedQuads( int quad_count, CvCBQuad **quad_group, CvSize p
 
     __BEGIN__;
 
-    CvPoint2D32f center = {0,0};
+    CvPoint2D32f center;
+    center.x=0;
+    center.y=0;
+    //= {0,0};
     int i, j, k;
 
 
@@ -1063,7 +1074,10 @@ int icvCleanFoundConnectedQuads( int quad_count, CvCBQuad **quad_group, CvSize p
 
     for( i = 0; i < quad_count; i++ )
     {
-        CvPoint2D32f ci = {0,0};
+        CvPoint2D32f ci;
+        ci.x=0;
+        ci.y=0;
+        //= {0,0};
         CvCBQuad* q = quad_group[i];
 
         for( j = 0; j < 4; j++ )
@@ -2305,7 +2319,14 @@ icvApproxPolyDP( CvSeq* src_contour, int header_size,
 {
     typedef cv::Point_<T> PT;
     int             init_iters = 3;
-    CvSlice         slice = {0, 0}, right_slice = {0, 0};
+    CvSlice         slice;
+    slice.start_index=0;
+    slice.end_index=0;
+    //= {0, 0},
+    CvSlice         right_slice;
+    right_slice.start_index=0;
+    right_slice.end_index=0;
+    //= {0, 0};
     CvSeqReader     reader, reader2;
     CvSeqWriter     writer;
     PT              start_pt(-1000000, -1000000), end_pt(0, 0), pt(0,0);
