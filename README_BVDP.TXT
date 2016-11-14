@@ -1,3 +1,8 @@
+To download the images for testing, execute:
+  ./getData.sh 
+
+
+---------------------------------------------------
 activer visu
 #define VIS 1
 -> passer en paramètre au lancement
