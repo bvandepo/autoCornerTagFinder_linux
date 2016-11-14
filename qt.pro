@@ -58,3 +58,6 @@ INCLUDEPATH += ./
 #INCLUDEPATH += /usr/local/include
 #INCLUDEPATH += /usr/local/include/opencv2
 MAKE_LIBDIR     += /usr/local/lib/
+
+DISTFILES += \
+    pictures.txt
