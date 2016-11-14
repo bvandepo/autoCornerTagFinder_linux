@@ -43,7 +43,7 @@ CvCBQuad;
 // FUNCTION PROTOTYPES
 //===========================================================================
 int icvGenerateQuads( CvCBQuad **quads, CvCBCorner **corners,
-                             CvMemStorage *storage, CvMat *image, int flags, int dilation,
+                             CvMemStorage *storage, CvMat *image, int flags,
                              bool firstRun );
 
 void mrFindQuadNeighbors2( CvCBQuad *quads, int quad_count, int dilation);
@@ -53,7 +53,7 @@ int mrAugmentBestRun( CvCBQuad *new_quads, int new_quad_count, int new_dilation,
 
 int icvFindConnectedQuads( CvCBQuad *quads, int quad_count, CvCBQuad **quad_group,
                                   int group_idx,
-                                  CvMemStorage* storage, int dilation );
+                                  CvMemStorage* storage);
 
 void mrLabelQuadGroup( CvCBQuad **quad_group, int count, CvSize pattern_size,
                               bool firstRun );

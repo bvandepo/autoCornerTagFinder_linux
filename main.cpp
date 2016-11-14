@@ -76,8 +76,8 @@ int main( int argc, char** argv )
 	CvCapture* capture				= 0;
 	FILE* f							= 0;
 	char imagename[1024];
-	CvMemStorage* storage;
-	CvSeq* image_points_seq			= 0;
+    //CvMemStorage* storage;
+    //CvSeq* image_points_seq			= 0;
 	int elem_size;
 	CvPoint2D32f* image_points_buf	= 0;
     CvSize img_size;
@@ -172,18 +172,18 @@ int main( int argc, char** argv )
 	
 	// Allocate memory
 	elem_size = board_size.width*board_size.height*sizeof(image_points_buf[0]);
-	storage = cvCreateMemStorage( MAX( elem_size*4, 1 << 16 ));
+    //storage = cvCreateMemStorage( MAX( elem_size*4, 1 << 16 ));
 	image_points_buf = (CvPoint2D32f*)cvAlloc( elem_size );
-	image_points_seq = cvCreateSeq( 0, sizeof(CvSeq), elem_size, storage );
+    //image_points_seq = cvCreateSeq( 0, sizeof(CvSeq), elem_size, storage );
 
 	// For loop which goes through all images specified above
 	for(int j = 1;; j++)
 	{
 		// Initializations
-		IplImage *view = 0, *view_gray = 0;
-		int count = 0, blink = 0;
+        IplImage *view = 0;//, *view_gray = 0;
+        int count = 0;//, blink = 0;
         CvSize text_size; text_size.width=0;text_size.height=0;
-		int base_line = 0;
+        //int base_line = 0;
 		// Load the correct image...
 		if( f && fgets( imagename, sizeof(imagename)-2, f ))
 		{

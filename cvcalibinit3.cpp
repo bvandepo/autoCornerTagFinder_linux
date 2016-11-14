@@ -57,7 +57,7 @@ bool SaveTimerInfo=true; // Elapse the function duration times
 
 
 //___________________________________________________________________________
-int determineQuadCode( CvCBQuad *quads, int res, IplImage *image,IplImage* imageRect,bool VisualizeResultsB, IplImage* imageDebugColor,int debugNumber){
+int determineQuadCode( CvCBQuad *quads, int res, IplImage *image,IplImage* imageRect,bool VisualizeResultsB, IplImage* imageDebugColor){
     //static int nb=0;
     unsigned char    patternW[11*11];
     unsigned char    patternB[11*11];
@@ -118,7 +118,7 @@ int determineQuadCode( CvCBQuad *quads, int res, IplImage *image,IplImage* image
         }
     //count black pixel in each pattern
     memset(nbBlacksInPattern,0,nb_patterns);
-    for (int n=0;n<nb_patterns;n++)
+    for (unsigned int n=0;n<nb_patterns;n++)
         for (int u=1;u<res-1;u++)
             for (int v=1;v<res-1;v++) {
                 if (listPattern[n][u+v*res]==0)
@@ -215,7 +215,7 @@ int determineQuadCode( CvCBQuad *quads, int res, IplImage *image,IplImage* image
     for (int val=0;val<256;val++){
         sum+=histo[val];
         histocumul[val]=sum;
-        for (int n=0;n<nb_patterns;n++){
+        for (unsigned int n=0;n<nb_patterns;n++){
             if ((sum>=nbBlacksInPattern[n]) && (thresholdForPattern[n]==0))
                 thresholdForPattern[n]=val;
         }
@@ -226,7 +226,7 @@ int determineQuadCode( CvCBQuad *quads, int res, IplImage *image,IplImage* image
         for (int v=1;v<res-1;v++)
         {
             int val= (unsigned char) reconstructedPattern[u+v*11];
-            for (int n=0;n<nb_patterns;n++){
+            for (unsigned int n=0;n<nb_patterns;n++){
                 // int n=3;{
                 if ((val>thresholdForPattern[n]) && ( listPattern[n][u+v*res]!=1))
                     errorForPattern[n]++;
@@ -265,10 +265,10 @@ int determineQuadCode( CvCBQuad *quads, int res, IplImage *image,IplImage* image
 
 
     //bvdp: TODO: if 2 patterns have been found, the third should be at a known position, so may be make the acceptable error higher for the remaining...
-    for (int n=2;n<nb_patterns;n++) //skip the black & white
+    for (unsigned int n=2;n<nb_patterns;n++) //skip the black & white
         if (errorForPattern[n]<= 1){ //allow for some pixel(s) to be erronneous // TODO check to find the best with no ambiguities
             //cout <<"debugNumber:" << debugNumber <<" pattern  "<< n<< " found " <<endl;
-            if (ret=-1)
+            if (ret==-1)
                 ret=n;  //return the detected code >=0
             else
                 ret=-2; //if multiple tag have been detected
@@ -307,7 +307,7 @@ int cvFindChessboardCorners3( const void* arr, CvSize pattern_size,
 {
     //START TIMER
     ofstream FindChessboardCorners2;
-    time_t  start_time;
+    time_t  start_time=0;
     if (SaveTimerInfo){
         start_time = clock();
     }
@@ -515,7 +515,7 @@ int cvFindChessboardCorners3( const void* arr, CvSize pattern_size,
 
         // Generate quadrangles in the following function
         // "quad_count" is the number of cound quadrangles
-        CV_CALL( quad_count = icvGenerateQuads( &quads, &corners, storage, thresh_img, flags, dilations, true ));
+        CV_CALL( quad_count = icvGenerateQuads( &quads, &corners, storage, thresh_img, flags, true ));
         if( quad_count <= 0 )
             continue;
 
@@ -528,7 +528,7 @@ int cvFindChessboardCorners3( const void* arr, CvSize pattern_size,
 
         //VISUALIZATION--------------------------------------------------------------
         IplImage* imageCopy2;
-        IplImage* imageCopy22;
+        IplImage* imageCopy22=NULL;
         if (VisualizeResults) {
             cvNamedWindow( "all found quads per dilation run", 1 );
             imageCopy2 = cvCreateImage( cvGetSize(thresh_img), 8, 1 );
@@ -619,7 +619,7 @@ int cvFindChessboardCorners3( const void* arr, CvSize pattern_size,
         for( group_idx = 0; ; group_idx++ )
         {
             int count;
-            CV_CALL( count = icvFindConnectedQuads( quads, quad_count, quad_group, group_idx, storage, dilations ));
+            CV_CALL( count = icvFindConnectedQuads( quads, quad_count, quad_group, group_idx, storage ));
 
             if( count == 0 )
                 break;
@@ -791,7 +791,7 @@ int cvFindChessboardCorners3( const void* arr, CvSize pattern_size,
                                                        thresh_img->rows-1), CV_RGB(255,255,255), 3, 8);
 
         //VISUALIZATION--------------------------------------------------------------
-        IplImage* imageCopy23;
+        IplImage* imageCopy23=NULL;
         if (VisualizeResults) {
             cvNamedWindow( "PART2: Starting Point", 1 );
             imageCopy23 = cvCreateImage( cvGetSize(thresh_img), 8, 3 );
@@ -826,7 +826,7 @@ int cvFindChessboardCorners3( const void* arr, CvSize pattern_size,
         //END------------------------------------------------------------------------
 
 
-        CV_CALL( quad_count = icvGenerateQuads( &quads, &corners, storage, thresh_img, flags, dilations, false ));
+        CV_CALL( quad_count = icvGenerateQuads( &quads, &corners, storage, thresh_img, flags, false ));
         if( quad_count <= 0 )
             continue;
         //VISUALIZATION--------------------------------------------------------------
@@ -860,9 +860,9 @@ int cvFindChessboardCorners3( const void* arr, CvSize pattern_size,
                 // indicate the quad number in the image
                 char str[255];
                 sprintf(str,"%i",kkk);
-                //CvFont font;
-                //cvInitFont(&font, CV_FONT_HERSHEY_SIMPLEX, 0.5, 0.5, 0, 1);
-                //cvPutText(imageCopy23, str, cvPoint(x3,y3), &font, CV_RGB(0,255,255));
+                CvFont font;
+                cvInitFont(&font, CV_FONT_HERSHEY_SIMPLEX, 0.5, 0.5, 0, 1);
+                cvPutText(imageCopy23, str, cvPoint(x3,y3), &font, CV_RGB(0,255,255));
             }
 
             for( int kkk = 0; kkk < max_count; kkk++ )
@@ -890,9 +890,9 @@ int cvFindChessboardCorners3( const void* arr, CvSize pattern_size,
                 // indicate the quad number in the image
                 char str[255];
                 sprintf(str,"%i",kkk);
-                //CvFont font;
-                //cvInitFont(&font, CV_FONT_HERSHEY_SIMPLEX, 0.5, 0.5, 0, 1);
-                //cvPutText(imageCopy23, str, cvPoint(x3,y3), &font, CV_RGB(0,0,0));
+                CvFont font;
+                cvInitFont(&font, CV_FONT_HERSHEY_SIMPLEX, 0.5, 0.5, 0, 1);
+                cvPutText(imageCopy23, str, cvPoint(x3,y3), &font, CV_RGB(0,0,0));
             }
 
             cvShowImage( "PART2: Starting Point", imageCopy23);
@@ -1179,11 +1179,11 @@ int icvCleanFoundConnectedQuads( int quad_count, CvCBQuad **quad_group, CvSize p
 // FIND COONECTED QUADS
 //===========================================================================
 int icvFindConnectedQuads( CvCBQuad *quad, int quad_count, CvCBQuad **out_group,
-                       int group_idx, CvMemStorage* storage, int dilation )
+                       int group_idx, CvMemStorage* storage)
 {
     //START TIMER
     ofstream FindConnectedQuads;
-    time_t  start_time;
+    time_t  start_time=0;
     if (SaveTimerInfo){
         start_time= clock();
     }
@@ -1253,7 +1253,7 @@ void mrLabelQuadGroup( CvCBQuad **quad_group, int count, CvSize pattern_size, bo
 {
     //START TIMER
     ofstream LabelQuadGroup;
-    time_t  start_time;
+    time_t  start_time=0;
     if (SaveTimerInfo){
         start_time= clock();
     }
@@ -1714,7 +1714,7 @@ void mrFindQuadNeighbors2( CvCBQuad *quads, int quad_count, int dilation)
 {
     //START TIMER
     ofstream FindQuadNeighbors2;
-    time_t  start_time;
+    time_t  start_time=0;
     if (SaveTimerInfo){
         start_time = clock();
     }
@@ -1728,7 +1728,7 @@ void mrFindQuadNeighbors2( CvCBQuad *quads, int quad_count, int dilation)
     const float thresh_dilation = (float)(2*dilation+3)*(2*dilation+3)*2;	// the "*2" is for the x and y component
     int idx, i, k, j;														// the "3" is for initial corner mismatch
     float dx, dy, dist;
-    int cur_quad_group = -1;
+    //int cur_quad_group = -1;
 
 
     // Find quad neighbors
@@ -1958,7 +1958,7 @@ int mrAugmentBestRun( CvCBQuad *new_quads, int new_quad_count, int new_dilation,
     //START TIMER
 
     ofstream AugmentBestRun;
-    time_t  start_time;
+    time_t  start_time=0;
     if (SaveTimerInfo){
         start_time = clock();
     }
@@ -2665,11 +2665,11 @@ cvApproxPoly( const void*  array, int  header_size,
 // GENERATE QUADRANGLES
 //===========================================================================
 int icvGenerateQuads( CvCBQuad **out_quads, CvCBCorner **out_corners,
-                  CvMemStorage *storage, CvMat *image, int flags, int dilation, bool firstRun )
+                  CvMemStorage *storage, CvMat *image, int flags, bool firstRun )
 {
     //START TIMER
     ofstream GenerateQuads;
-    time_t  start_time;
+    time_t  start_time=0;
     if (SaveTimerInfo){
         start_time = clock();
     }
@@ -2681,10 +2681,10 @@ int icvGenerateQuads( CvCBQuad **out_quads, CvCBCorner **out_corners,
 
 
 
-    IplImage* imageCopyCol;
-    if (VisualizeResults) {
-        imageCopyCol = cvCreateImage( cvGetSize(image), 8, 3 );
-    }
+   // IplImage* imageCopyCol;
+   // if (VisualizeResults) {
+   //     imageCopyCol = cvCreateImage( cvGetSize(image), 8, 3 );
+   // }
 
 
     if( out_quads )
@@ -2778,30 +2778,30 @@ int icvGenerateQuads( CvCBQuad **out_quads, CvCBCorner **out_corners,
             if(dst_contour->total == 4 && cvCheckContourConvexity(dst_contour) )
             {
                 CvPoint pt[4];
-                double d1, d2, p = cvContourPerimeter(dst_contour);
-                double area = fabs(cvContourArea(dst_contour, CV_WHOLE_SEQ));
-                double dx, dy;
+                //double d1, d2, p = cvContourPerimeter(dst_contour);
+                //double area = fabs(cvContourArea(dst_contour, CV_WHOLE_SEQ));
+                //double dx, dy;
 
                 for( i = 0; i < 4; i++ )
                     pt[i] = *(CvPoint*)cvGetSeqElem(dst_contour, i);
 
-                dx = pt[0].x - pt[2].x;
-                dy = pt[0].y - pt[2].y;
-                d1 = sqrt(dx*dx + dy*dy);
+                //dx = pt[0].x - pt[2].x;
+                //dy = pt[0].y - pt[2].y;
+                // d1 = sqrt(dx*dx + dy*dy);
 
-                dx = pt[1].x - pt[3].x;
-                dy = pt[1].y - pt[3].y;
-                d2 = sqrt(dx*dx + dy*dy);
+                //dx = pt[1].x - pt[3].x;
+                //dy = pt[1].y - pt[3].y;
+                //d2 = sqrt(dx*dx + dy*dy);
 
                 // PHILIPG: Only accept those quadrangles which are more
                 // square than rectangular and which are big enough
-                double d3, d4;
-                dx = pt[0].x - pt[1].x;
-                dy = pt[0].y - pt[1].y;
-                d3 = sqrt(dx*dx + dy*dy);
-                dx = pt[1].x - pt[2].x;
-                dy = pt[1].y - pt[2].y;
-                d4 = sqrt(dx*dx + dy*dy);
+                //double d3, d4;
+                //dx = pt[0].x - pt[1].x;
+                //dy = pt[0].y - pt[1].y;
+               // d3 = sqrt(dx*dx + dy*dy);
+                //dx = pt[1].x - pt[2].x;
+                //dy = pt[1].y - pt[2].y;
+                //d4 = sqrt(dx*dx + dy*dy);
                 if(true)//!(flags & CV_CALIB_CB_FILTER_QUADS) ||
                     //d3*4 > d4 && d4*4 > d3 && d3*d4 < area*1.5 && area > min_size &&
                     //d1 >= 0.15 * p && d2 >= 0.15 * p )
@@ -3122,7 +3122,7 @@ int mrWriteCorners( CvCBQuad **output_quads, int count, CvSize pattern_size, int
             if ( (tabX[i][j]>NOK) && (tabX[i+1][j]>NOK) && (tabX[i][j+1]>NOK) && (tabX[i+1][j+1]>NOK) &&
                  (tabY[i][j]>NOK) && (tabY[i+1][j]>NOK) && (tabY[i][j+1]>NOK) && (tabY[i+1][j+1]>NOK) ){
                 int nb=1+j+i*(maxPattern_sizeRow-1);
-                int value=determineQuadCode( &tabq [i][j], res,imageDebug,imageRect,true, imageDebugColor,nb);
+                int value=determineQuadCode( &tabq [i][j], res,imageDebug,imageRect,true, imageDebugColor);
                 if (value>=0){
                     cout <<"nb:" << nb;
                     cout <<" pattern  "<< value<< " found " <<endl;
