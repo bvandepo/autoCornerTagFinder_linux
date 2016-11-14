@@ -30,7 +30,7 @@ If you use this code, please cite the following articles:
 // CODE STARTS HERE
 //===========================================================================
 // Include files
-#include <opencv.hpp>
+#include <opencv2/opencv.hpp>
 
 
 //#include <opencv2/core/internal.hpp>
@@ -41,7 +41,7 @@ If you use this code, please cite the following articles:
 #define EXIT __CV_EXIT__
 
 
-#include <Eigen/Dense>
+#include <eigen3/Eigen/Dense>
 
 #include <time.h>
 #include <fstream>
