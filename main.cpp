@@ -84,7 +84,7 @@ int main( int argc, char** argv )
     img_size.width=0;
     img_size.height=0;
 	int found						= -2;
-    int min_number_of_corners		= 64;
+    int min_number_of_corners		= 10;
 	input_filename					= "pictures.txt";
 	//input_filename					= "myVideo2.avi";
 
@@ -98,6 +98,9 @@ int main( int argc, char** argv )
 
 	// Create error message file
 	ofstream error("outputImages/error.txt");
+
+//TODO: bvdp to remove later....
+    system("rm pictureVis/*.ppm");
 
 
 	// Read the "argv" function input arguments
