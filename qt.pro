@@ -18,7 +18,9 @@ DESTDIR = ./
 OBJECTS_DIR = ./
 
 SOURCES += main.cpp CalibTagFinder.cpp
+SOURCES += PolygonApprox.cpp
 HEADERS += CalibTagFinder.h
+HEADERS += PolygonApprox.h
 DISTFILES += pictures.txt
 
 #CONFIG+=OPENCV2411LOCAL
