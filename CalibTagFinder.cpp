@@ -35,7 +35,7 @@ If you use this code, please cite the following articles:
 
 //#include <opencv2/core/internal.hpp>
 
-#include "cvcalibinit3.h"
+#include "CalibTagFinder.h"
 #define __BEGIN__ __CV_BEGIN__
 #define __END__ __CV_END__
 #define EXIT __CV_EXIT__
@@ -52,8 +52,8 @@ using std::ifstream;
 // wait for the user to press a key between image, display will be produced only if this variable is set to true
 bool ShowFinalImage=true;
 bool SaveFinalImage=true;
-bool ShowIntermediateImages=true;
-bool SaveIntermediateImagesForDebug=true;
+bool ShowIntermediateImages=false;
+bool SaveIntermediateImagesForDebug=false;
 
 bool VisualizeResults=ShowFinalImage || SaveFinalImage || ShowIntermediateImages || SaveIntermediateImagesForDebug;  // Turn on visualization
 
