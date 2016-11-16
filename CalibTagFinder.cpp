@@ -852,10 +852,8 @@ int CalibTagFinder::cvFindChessboardCorners3( const void* arr)
             cvDilate( thresh_img, thresh_img, kernel1, 1);
         if (dilations >= 6)
             cvDilate( thresh_img, thresh_img, kernel2, 1);
-
         cvRectangle( thresh_img, cvPoint(0,0), cvPoint(thresh_img->cols-1,
                                                        thresh_img->rows-1), CV_RGB(255,255,255), 3, 8);
-
         //VISUALIZATION--------------------------------------------------------------
         IplImage* imageCopy23=NULL;
         if (VisualizeResults) {
@@ -864,7 +862,7 @@ int CalibTagFinder::cvFindChessboardCorners3( const void* arr)
             //to show the image before drawing the quads
             if (SaveIntermediateImagesForDebug)
                 cvSaveImage("pictureVis/part2StartB.ppm", imageCopy23);
-            CvPoint *pt = new CvPoint[4];
+            CvPoint pt[4];
             for( int kkk = 0; kkk < max_count; kkk++ )
             {
                 CvCBQuad* print_quad2 = output_quad_group[kkk];
@@ -876,6 +874,7 @@ int CalibTagFinder::cvFindChessboardCorners3( const void* arr)
                 // draw a filled polygon
                 cvFillConvexPoly ( imageCopy23, pt, 4, CV_RGB(255*0.1,255*0.25,255*0.6));
             }
+
             // indicate the dilation run
             char str[255];
             sprintf(str,"Dilation Run No.: %i",dilations);
@@ -2700,7 +2699,6 @@ void CalibTagFinder::processCorners( CvCBQuad **output_quads, int count, CvSize 
         maxPattern_sizeColumn = max(pattern_size.width, pattern_size.height);
         maxPattern_sizeRow = max(pattern_size.width, pattern_size.height);
     }
-
 }
 //===========================================================================
 // WRITE CORNERS TO FILE
@@ -2709,13 +2707,10 @@ int CalibTagFinder::mrWriteCorners( CvCBQuad **output_quads, int count, int min_
 {
     // Return variable
     int internal_found = 0;
-
     // Open the output files
     ofstream cornersX("cToMatlab/cornersX.txt");
     ofstream cornersY("cToMatlab/cornersY.txt");
     ofstream cornerInfo("cToMatlab/cornerInfo.txt");
-
-
     // Write the corners in increasing order to the output file
     for(int i = min_row + 1; i < maxPattern_sizeRow + min_row + 1; i++)
     {
@@ -2723,7 +2718,6 @@ int CalibTagFinder::mrWriteCorners( CvCBQuad **output_quads, int count, int min_
         {
             // Reset the iterator
             int iter = 1;
-
             for(int k = 0; k < count; k++)
             {
                 for(int l = 0; l < 4; l++)
@@ -2742,20 +2736,16 @@ int CalibTagFinder::mrWriteCorners( CvCBQuad **output_quads, int count, int min_
                             cornersY << " ";
                             corner_count++;
                         }
-
-
                         // If the iterator is larger than two, this means that more than
                         // two corners have the same row / column entries. Then some
                         // linking errors must have occured and we should not use the found
                         // pattern
                         if (iter > 2)
                             return -1;
-
                         iter++;
                     }
                 }
             }
-
             // If the respective row / column is non - existent or is a border corner
             if (iter == 1 || iter == 2)
             {
@@ -2768,25 +2758,17 @@ int CalibTagFinder::mrWriteCorners( CvCBQuad **output_quads, int count, int min_
         cornersX << endl;
         cornersY << endl;
     }
-
-
-
     // Write to the corner matrix size info file
     cornerInfo << maxPattern_sizeRow<< " " << maxPattern_sizeColumn << endl;
-
-
     // Close the output files
     cornersX.close();
     cornersY.close();
     cornerInfo.close();
-
     // check whether enough corners have been found
     if (corner_count >= min_number_of_corners)
         internal_found = 1;
     else
         internal_found = 0;
-
-
     // pattern found, or not found?
     return internal_found;
 }
@@ -2797,12 +2779,19 @@ int CalibTagFinder::mrWriteCorners( CvCBQuad **output_quads, int count, int min_
 int CalibTagFinder::detectTags( CvCBQuad **output_quads, int count, CvSize pattern_size, CvMat *image)
 {
 
-
     //2D array of CvCBQuad to store every quads (black and white ones)
     CvCBQuad tabq [pattern_size.height+1][pattern_size.width+1];
     //Grid corners positions in 2D arrays
     float tabX [pattern_size.height+1][pattern_size.width+1];
     float tabY [pattern_size.height+1][pattern_size.width+1];
+
+    //reinitialization of tabX and tabY
+    for (int i=0;i<pattern_size.height;i++)
+        for (int j=0;j<pattern_size.width;j++)
+        {
+            tabX[i][j]=-1;
+            tabY[i][j]=-1;
+        }
 
     //loops copied from mrWriteCorners
     // Write the corners in increasing order to the output file
@@ -2912,7 +2901,7 @@ int CalibTagFinder::detectTags( CvCBQuad **output_quads, int count, CvSize patte
     for (int i=0;i<maxPattern_sizeRow-1;i++)
         for (int j=0;j<maxPattern_sizeColumn-1;j++) {
             for (int k=0;k<4;k++)
-                tabq [i][j].corners[k]=new   CvCBCorner;
+                tabq [i][j].corners[k]=new   CvCBCorner;  //TODO deallocation
             tabq [i][j].corners[0]->pt.x=tabX[i][j];
             tabq [i][j].corners[0]->pt.y=tabY[i][j];
             tabq [i][j].corners[1]->pt.x=tabX[i][j+1];
@@ -2950,7 +2939,7 @@ int CalibTagFinder::detectTags( CvCBQuad **output_quads, int count, CvSize patte
         cvSaveImage("pictureVis/allFoundQuadsB.ppm", imageDebugColor);
     }
     //TODO think about a way to return the result
-   return 1;
+    return 1;
 }
 //===========================================================================
 // END OF FILE
