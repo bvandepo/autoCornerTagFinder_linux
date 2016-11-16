@@ -49,9 +49,18 @@ using namespace std;
 using std::ifstream;
 
 //global variables :(
-bool VisualizeResults=true;  // Turn on visualization
-bool WaitBetweenImages=false; // wait for the user to press a key between image, display will be produced only if this variable is set to true
+// wait for the user to press a key between image, display will be produced only if this variable is set to true
+bool ShowFinalImage=true;
+bool SaveFinalImage=true;
+bool ShowIntermediateImages=true;
+bool SaveIntermediateImagesForDebug=true;
+
+bool VisualizeResults=ShowFinalImage || SaveFinalImage || ShowIntermediateImages || SaveIntermediateImagesForDebug;  // Turn on visualization
+
+
 bool SaveTimerInfo=true; // Elapse the function duration times
+
+
 
 
 
@@ -446,12 +455,14 @@ int cvFindChessboardCorners3( const void* arr, CvSize pattern_size,
     cvCopy( thresh_img, thresh_img_save);
 
     //VISUALIZATION--------------------------------------------------------------
-    if (VisualizeResults) {
+    if (ShowIntermediateImages){
         cvNamedWindow( "Original Image", 1 );
         cvShowImage( "Original Image", img);
+        cvWaitKey(0);
+    }
+    if (SaveIntermediateImagesForDebug){
         cvSaveImage("pictureVis/OrigImg.ppm", img);
         cvSaveImage("pictureVis/TreshImg.ppm", thresh_img);
-        if (WaitBetweenImages) cvWaitKey(0);
     }
     //END------------------------------------------------------------------------
 
@@ -504,13 +515,16 @@ int cvFindChessboardCorners3( const void* arr, CvSize pattern_size,
         }
 
         //VISUALIZATION--------------------------------------------------------------
-        if (VisualizeResults) {
+
+        if (ShowIntermediateImages){
             cvNamedWindow( "After adaptive Threshold (and Dilation)", 1 );
             cvShowImage( "After adaptive Threshold (and Dilation)", thresh_img);
+            cvWaitKey(0);
+        }
+        if (SaveIntermediateImagesForDebug){
             char name[1000];
             sprintf(name,"pictureVis/afterDilation-%02d.ppm",dilations);
             cvSaveImage(name, thresh_img);
-            if (WaitBetweenImages) cvWaitKey(0);
         }
         //END------------------------------------------------------------------------
 
@@ -545,13 +559,11 @@ int cvFindChessboardCorners3( const void* arr, CvSize pattern_size,
         IplImage* imageCopy2;
         IplImage* imageCopy22=NULL;
         if (VisualizeResults) {
-            cvNamedWindow( "all found quads per dilation run", 1 );
             imageCopy2 = cvCreateImage( cvGetSize(thresh_img), 8, 1 );
             imageCopy22 = cvCreateImage( cvGetSize(thresh_img), 8, 3 );
             cvCopy( thresh_img, imageCopy2);
             cvCvtColor( imageCopy2, imageCopy22, CV_GRAY2BGR );
-
-            for( int kkk = 0; kkk < quad_count; kkk++ )
+          for( int kkk = 0; kkk < quad_count; kkk++ )
             {
                 CvCBQuad* print_quad = &quads[kkk];
                 CvPoint pt[4];
@@ -568,11 +580,17 @@ int cvFindChessboardCorners3( const void* arr, CvSize pattern_size,
                 cvLine( imageCopy22, pt[2], pt[3], CV_RGB(255,255,0), 1, 8 );
                 cvLine( imageCopy22, pt[3], pt[0], CV_RGB(255,255,0), 1, 8 );
             }
-            cvShowImage( "all found quads per dilation run", imageCopy22);
-            char name[1000];
-            sprintf(name,"pictureVis/allFoundQuads-%02d.ppm",dilations);
-            cvSaveImage(name, imageCopy22);
-            if (WaitBetweenImages) cvWaitKey(0);
+            if (ShowIntermediateImages){
+                cvNamedWindow( "all found quads per dilation run", 1 );
+                cvShowImage( "all found quads per dilation run", imageCopy22);
+                cvWaitKey(0);
+            }
+            if (SaveIntermediateImagesForDebug){
+                char name[1000];
+                sprintf(name,"pictureVis/allFoundQuads-%02d.ppm",dilations);
+                cvSaveImage(name, imageCopy22);
+            }
+
         }
         //END------------------------------------------------------------------------
 
@@ -584,7 +602,6 @@ int cvFindChessboardCorners3( const void* arr, CvSize pattern_size,
 
         //VISUALIZATION--------------------------------------------------------------
         if (VisualizeResults) {
-            cvNamedWindow( "quads with neighbors", 1 );
             IplImage* imageCopy3 = cvCreateImage( cvGetSize(thresh_img), 8, 3 );
             cvCopy( imageCopy22, imageCopy3);
             CvPoint pt;
@@ -609,11 +626,16 @@ int cvFindChessboardCorners3( const void* arr, CvSize pattern_size,
                     }
                 }
             }
-            cvShowImage( "quads with neighbors", imageCopy3);
-            char name[1000];
-            sprintf(name,"pictureVis/allFoundNeighbors-%02d.ppm",dilations);
-            cvSaveImage(name, imageCopy3);
-            if (WaitBetweenImages) cvWaitKey(0);
+            if (ShowIntermediateImages){
+                cvNamedWindow( "quads with neighbors", 1 );
+                cvShowImage( "quads with neighbors", imageCopy3);
+                cvWaitKey(0);
+            }
+            if (SaveIntermediateImagesForDebug){
+                char name[1000];
+                sprintf(name,"pictureVis/allFoundNeighbors-%02d.ppm",dilations);
+                cvSaveImage(name, imageCopy3);
+            }
         }
         //END------------------------------------------------------------------------
 
@@ -665,7 +687,6 @@ int cvFindChessboardCorners3( const void* arr, CvSize pattern_size,
                 //VISUALIZATION--------------------------------------------------------------
                 if (VisualizeResults) {
                     // display all corners in INCREASING ROW AND COLUMN ORDER
-                    cvNamedWindow( "Corners in increasing order", 1 );
                     IplImage* imageCopy11 = cvCreateImage( cvGetSize(thresh_img), 8, 3 );
                     cvCopy( imageCopy22, imageCopy11);
                     // Assume min and max rows here, since we are outside of the
@@ -702,7 +723,7 @@ int cvFindChessboardCorners3( const void* arr, CvSize pattern_size,
                                         {
                                             cvPutText(imageCopy11, str, ptt, &font, CV_RGB(255,0,0));
                                         }
-                                        cvShowImage( "Corners in increasing order", imageCopy11);
+                                        //cvShowImage( "Corners in increasing order", imageCopy11);
                                         //cvSaveImage("pictureVis/CornersIncreasingOrder.ppm", imageCopy11);
                                         //if (WaitBetweenImages) cvWaitKey(0);
                                     }
@@ -710,10 +731,17 @@ int cvFindChessboardCorners3( const void* arr, CvSize pattern_size,
                             }
                         }
                     }
-                    char name[1000];
-                    sprintf(name,"pictureVis/CornersIncreasingOrder-%02d-%05d.ppm",dilations,group_idx);
-                    cvSaveImage(name, imageCopy11);
-                    if (WaitBetweenImages) cvWaitKey(0);
+                    if (ShowIntermediateImages) {
+                        cvNamedWindow( "Corners in increasing order", 1 );
+                        cvShowImage( "Corners in increasing order", imageCopy11);
+                        cvWaitKey(0);
+                    }
+                    if (SaveIntermediateImagesForDebug){
+                        char name[1000];
+                        sprintf(name,"pictureVis/CornersIncreasingOrder-%02d-%05d.ppm",dilations,group_idx);
+                        cvSaveImage(name, imageCopy11);
+                    }
+
                 }
                 //END------------------------------------------------------------------------
 
@@ -808,12 +836,11 @@ int cvFindChessboardCorners3( const void* arr, CvSize pattern_size,
         //VISUALIZATION--------------------------------------------------------------
         IplImage* imageCopy23=NULL;
         if (VisualizeResults) {
-            cvNamedWindow( "PART2: Starting Point", 1 );
             imageCopy23 = cvCreateImage( cvGetSize(thresh_img), 8, 3 );
             cvCvtColor( thresh_img, imageCopy23, CV_GRAY2BGR );
-            //bvdp: to show the image before drawing the quads
-            cvSaveImage("pictureVis/part2StartB.ppm", imageCopy23);
-
+            //to show the image before drawing the quads
+            if (SaveIntermediateImagesForDebug)
+                cvSaveImage("pictureVis/part2StartB.ppm", imageCopy23);
             CvPoint *pt = new CvPoint[4];
             for( int kkk = 0; kkk < max_count; kkk++ )
             {
@@ -833,10 +860,14 @@ int cvFindChessboardCorners3( const void* arr, CvSize pattern_size,
             cvInitFont(&font, CV_FONT_HERSHEY_SIMPLEX, 0.5, 0.5, 0, 2);
             //bvdp uncommented, todo check it cannot fail:
             cvPutText(imageCopy23, str, cvPoint(20,20), &font, CV_RGB(0,255,0));
-
-            cvShowImage( "PART2: Starting Point", imageCopy23);
-            cvSaveImage("pictureVis/part2Start.ppm", imageCopy23);
-            if (WaitBetweenImages) cvWaitKey(0);
+            if (ShowIntermediateImages){
+                cvNamedWindow( "PART2: Starting Point", 1 );
+                cvShowImage( "PART2: Starting Point", imageCopy23);
+                cvWaitKey(0);
+            }
+            if (SaveIntermediateImagesForDebug){
+                cvSaveImage("pictureVis/part2Start.ppm", imageCopy23);
+            }
         }
         //END------------------------------------------------------------------------
 
@@ -909,10 +940,14 @@ int cvFindChessboardCorners3( const void* arr, CvSize pattern_size,
                 cvInitFont(&font, CV_FONT_HERSHEY_SIMPLEX, 0.5, 0.5, 0, 1);
                 cvPutText(imageCopy23, str, cvPoint(x3,y3), &font, CV_RGB(0,0,0));
             }
+            if (ShowIntermediateImages){
+                cvShowImage( "PART2: Starting Point", imageCopy23);
+                cvWaitKey(0);
+            }
+            if (SaveIntermediateImagesForDebug){
+                cvSaveImage("pictureVis/part2StartAndNewQuads.ppm", imageCopy23);
+            }
 
-            cvShowImage( "PART2: Starting Point", imageCopy23);
-            cvSaveImage("pictureVis/part2StartAndNewQuads.ppm", imageCopy23);
-            if (WaitBetweenImages) cvWaitKey(0);
         }
         //END------------------------------------------------------------------------
 
@@ -954,8 +989,7 @@ int cvFindChessboardCorners3( const void* arr, CvSize pattern_size,
                         cvLine( imageCopy23, pt[2], pt[3], CV_RGB(255,0,0), 2, 8 );
                         cvLine( imageCopy23, pt[3], pt[0], CV_RGB(255,0,0), 2, 8 );
                     }
-
-                    if (WaitBetweenImages) cvWaitKey(0);
+                    //if (WaitBetweenImages) cvWaitKey(0);
                     // also draw the corner to which it is connected
                     // Remember it is not yet completely linked!!!
                     for( int kkk = 0; kkk < max_count; kkk++ )
@@ -981,9 +1015,13 @@ int cvFindChessboardCorners3( const void* arr, CvSize pattern_size,
                             }
                         }
                     }
-                    cvShowImage( "PART2: Starting Point", imageCopy23);
-                    cvSaveImage("pictureVis/part2StartAndSelectedQuad.ppm", imageCopy23);
-                    if (WaitBetweenImages) cvWaitKey(0);
+                    if (ShowIntermediateImages){
+                        cvShowImage( "PART2: Starting Point", imageCopy23);
+                        cvWaitKey(0);
+                    }
+                    if (SaveIntermediateImagesForDebug){
+                        cvSaveImage("pictureVis/part2StartAndSelectedQuad.ppm", imageCopy23);
+                    }
                 }
             }
             //END------------------------------------------------------------------------
@@ -3171,18 +3209,26 @@ int mrWriteCorners( CvCBQuad **output_quads, int count, CvSize pattern_size, int
                 if (value>=0){
                     cout <<"nb:" << nb;
                     cout <<" pattern  "<< value<< " found " <<endl;
-                    cvShowImage( "reconstructed tag", imageRect);
-                    char name[1000];
-                    sprintf(name,"pictureVis/reconstructedtag_%04d.ppm",nb );
-                    cvSaveImage(name, imageRect);
+                    if (ShowIntermediateImages){
+                        cvNamedWindow( "reconstructed tag", 1 );
+                        cvShowImage( "reconstructed tag", imageRect);
+                    }
+                    if (SaveIntermediateImagesForDebug){
+                        char name[1000];
+                        sprintf(name,"pictureVis/reconstructedtag_%04d.ppm",nb );
+                        cvSaveImage(name, imageRect);
+                    }
                 }
             }
         }
-    cvShowImage( "all found quads per dilation run", imageDebugColor);
-    cvSaveImage("pictureVis/allFoundQuadsB.ppm", imageDebugColor);
-    //  if (WaitBetweenImages) cvWaitKey(0);
-
-
+    if (ShowFinalImage){
+        cvNamedWindow( "Final Result", 1 );
+        cvShowImage( "Final Result", imageDebugColor);
+        cvWaitKey(0);
+    }
+    if (SaveFinalImage){
+        cvSaveImage("pictureVis/allFoundQuadsB.ppm", imageDebugColor);
+    }
     // Write to the corner matrix size info file
     cornerInfo << maxPattern_sizeRow<< " " << maxPattern_sizeColumn << endl;
 
