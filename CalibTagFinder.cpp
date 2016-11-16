@@ -55,7 +55,7 @@ CalibTagFinder:: CalibTagFinder(){
     ShowFinalImage=true;
     SaveFinalImage=true;
     ShowIntermediateImages=false;
-    SaveIntermediateImagesForDebug=false;
+    SaveIntermediateImagesForDebug=true;
 
     VisualizeResults=ShowFinalImage || SaveFinalImage || ShowIntermediateImages || SaveIntermediateImagesForDebug;  // Turn on visualization
 
@@ -343,9 +343,15 @@ int CalibTagFinder::cvFindChessboardCorners3( const void* arr)
 {
     setImgSize(cvGetSize(arr));
     CvSize pattern_size=board_size;
-    CvPoint2D32f* out_corners=image_points_buf;
+    //CvPoint2D32f* out_corners=image_points_buf;
     detectedCornersCount=0;
-    int* out_corner_count=&detectedCornersCount;
+    //int* out_corner_count=&detectedCornersCount;
+
+
+    //TODO: bvdp to remove later....
+    system("rm pictureVis/*.ppm");
+
+
     //START TIMER
     ofstream FindChessboardCorners2;
     time_t  start_time=0;
@@ -402,6 +408,7 @@ int CalibTagFinder::cvFindChessboardCorners3( const void* arr)
         error.close();
         return -1;
     }
+    /*
     if( pattern_size.width < 2 || pattern_size.height < 2 )
     {
         error << "Pattern should have at least 2x2 size" << endl;
@@ -414,20 +421,19 @@ int CalibTagFinder::cvFindChessboardCorners3( const void* arr)
         error.close();
         return -1;
     }
-    /*
+
     if( pattern_size.width != pattern_size.height )
     {
         error << "In this implementation only square sized checker boards are supported" << endl;
         error.close();
         return -1;
     }
-    */
-    if( !out_corners )
+   if( !out_corners )
     {
         error << "Null pointer to corners encountered" << endl;
         error.close();
         return -1;
-    }
+    }*/
 
 
     // Create memory storage
@@ -442,13 +448,11 @@ int CalibTagFinder::cvFindChessboardCorners3( const void* arr)
     if( CV_MAT_CN(img->type) != 1 || (flags & CV_CALIB_CB_NORMALIZE_IMAGE) )
     {
         CV_CALL( norm_img = cvCreateMat( img->rows, img->cols, CV_8UC1 ));
-
         if( CV_MAT_CN(img->type) != 1 )
         {
             CV_CALL( cvCvtColor( img, norm_img, CV_BGR2GRAY ));
             img = norm_img;
         }
-
         if(false)
         {
             cvEqualizeHist( img, norm_img );
@@ -553,11 +557,11 @@ int CalibTagFinder::cvFindChessboardCorners3( const void* arr)
         cvRectangle( thresh_img, cvPoint(0,0), cvPoint(thresh_img->cols-1,
                                                        thresh_img->rows-1), CV_RGB(255,255,255), 3, 8);
 
+        //TODO: il y a des probleme avec ces images
         //bvdp, hack to debug icvGenerateQuads
-        //thresh_img = cvLoadImageM( "pictureVis/afterDilationCleanedByHand3.ppm", 0 );
-        //thresh_img = cvLoadImageM( "pictureVis/afterDilationCleanedByHand8.ppm", 0 );
+        //thresh_img = cvLoadImageM( "pictureVis/pb/afterDilationCleanedByHand3.ppm", 0 );
+        //thresh_img = cvLoadImageM( "pictureVis/pb/afterDilationCleanedByHand8.ppm", 0 );
         //cvSaveImage("pictureVis/afterDilationCleanedByHandActu.ppm", thresh_img);
-
 
         // Generate quadrangles in the following function
         // "quad_count" is the number of cound quadrangles

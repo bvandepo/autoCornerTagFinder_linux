@@ -86,10 +86,6 @@ int main( int argc, char** argv )
     // Create error message file
     ofstream error("outputImages/error.txt");
 
-    //TODO: bvdp to remove later....
-    system("rm pictureVis/*.ppm");
-
-
     CalibTagFinder* calibTagFinder=new CalibTagFinder();
 
     ////////////////////////////PARSING////////////////////////////////////////////
