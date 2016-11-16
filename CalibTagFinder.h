@@ -37,42 +37,56 @@ typedef struct CvCBQuad
 }
 CvCBQuad;
 
+class CalibTagFinder
+{
+
+public:
+    CalibTagFinder();
+
+    int cvFindChessboardCorners3( const void* arr, CvSize pattern_size,
+                                  CvPoint2D32f* out_corners, int* out_corner_count,
+                                  int min_number_of_corners );
+    //===========================================================================
+    // FUNCTION PROTOTYPES
+    //===========================================================================
+private:
+    int icvGenerateQuads( CvCBQuad **quads, CvCBCorner **corners,
+                          CvMemStorage *storage, CvMat *image, int flags,
+                          bool firstRun );
+
+    void mrFindQuadNeighbors2( CvCBQuad *quads, int quad_count, int dilation);
+
+    int mrAugmentBestRun( CvCBQuad *new_quads, int new_quad_count, int new_dilation,
+                          CvCBQuad **old_quads, int old_quad_count, int old_dilation );
+
+    int icvFindConnectedQuads( CvCBQuad *quads, int quad_count, CvCBQuad **quad_group,
+                               int group_idx,
+                               CvMemStorage* storage);
+
+    void mrLabelQuadGroup( CvCBQuad **quad_group, int count, CvSize pattern_size,
+                           bool firstRun );
+
+    void mrCopyQuadGroup( CvCBQuad **temp_quad_group, CvCBQuad **out_quad_group,
+                          int count );
+
+    int icvCleanFoundConnectedQuads( int quad_count, CvCBQuad **quads,
+                                     CvSize pattern_size );
+
+    int mrWriteCorners( CvCBQuad **output_quads, int count, CvSize pattern_size,
+                        int min_number_of_corners, CvMat *image=NULL );
 
 
-//===========================================================================
-// FUNCTION PROTOTYPES
-//===========================================================================
-int icvGenerateQuads( CvCBQuad **quads, CvCBCorner **corners,
-                             CvMemStorage *storage, CvMat *image, int flags,
-                             bool firstRun );
 
-void mrFindQuadNeighbors2( CvCBQuad *quads, int quad_count, int dilation);
-
-int mrAugmentBestRun( CvCBQuad *new_quads, int new_quad_count, int new_dilation,
-                             CvCBQuad **old_quads, int old_quad_count, int old_dilation );
-
-int icvFindConnectedQuads( CvCBQuad *quads, int quad_count, CvCBQuad **quad_group,
-                                  int group_idx,
-                                  CvMemStorage* storage);
-
-void mrLabelQuadGroup( CvCBQuad **quad_group, int count, CvSize pattern_size,
-                              bool firstRun );
-
-void mrCopyQuadGroup( CvCBQuad **temp_quad_group, CvCBQuad **out_quad_group,
-                             int count );
-
-int icvCleanFoundConnectedQuads( int quad_count, CvCBQuad **quads,
-                                        CvSize pattern_size );
-
-int mrWriteCorners( CvCBQuad **output_quads, int count, CvSize pattern_size,
-                           int min_number_of_corners, CvMat *image=NULL );
+    int determineQuadCode( CvCBQuad *quads, int res, IplImage *image,IplImage* imageRect,bool VisualizeResultsB, IplImage* imageDebugColor);
+    //determineQuadCode( CvCBQuad *quads, int res, CvMat *image);
 
 
+    //attributes
+    bool ShowFinalImage;
+    bool SaveFinalImage;
+    bool ShowIntermediateImages;
+    bool SaveIntermediateImagesForDebug;
+    bool VisualizeResults;
+    bool SaveTimerInfo;
 
-int determineQuadCode( CvCBQuad *quads, int res, CvMat *image);
-
-
-
-int cvFindChessboardCorners3( const void* arr, CvSize pattern_size,
-                             CvPoint2D32f* out_corners, int* out_corner_count,
-                             int min_number_of_corners );
+};

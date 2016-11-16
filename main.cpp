@@ -241,8 +241,10 @@ int main( int argc, char** argv )
         }
         img_size = cvGetSize(view);
 
-        found = cvFindChessboardCorners3( view, board_size,
+        CalibTagFinder* calibTagFinder=new CalibTagFinder();
+        found = calibTagFinder->cvFindChessboardCorners3( view, board_size,
                                           image_points_buf, &count, min_number_of_corners );
+        delete calibTagFinder;
 
         if( !view )
             break;

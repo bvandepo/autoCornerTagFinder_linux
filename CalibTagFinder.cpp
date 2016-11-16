@@ -48,25 +48,24 @@ If you use this code, please cite the following articles:
 using namespace std;
 using std::ifstream;
 
-//global variables :(
-// wait for the user to press a key between image, display will be produced only if this variable is set to true
-bool ShowFinalImage=true;
-bool SaveFinalImage=true;
-bool ShowIntermediateImages=false;
-bool SaveIntermediateImagesForDebug=false;
 
-bool VisualizeResults=ShowFinalImage || SaveFinalImage || ShowIntermediateImages || SaveIntermediateImagesForDebug;  // Turn on visualization
+//Constructor
+CalibTagFinder:: CalibTagFinder(){
+    ShowFinalImage=true;
+    SaveFinalImage=true;
+    ShowIntermediateImages=false;
+    SaveIntermediateImagesForDebug=false;
 
+    VisualizeResults=ShowFinalImage || SaveFinalImage || ShowIntermediateImages || SaveIntermediateImagesForDebug;  // Turn on visualization
 
-bool SaveTimerInfo=true; // Elapse the function duration times
+    SaveTimerInfo=true; // Elapse the function duration times
 
-
-
+}
 
 
 
 //___________________________________________________________________________
-int determineQuadCode( CvCBQuad *quads, int res, IplImage *image,IplImage* imageRect,bool VisualizeResultsB, IplImage* imageDebugColor){
+int CalibTagFinder::determineQuadCode( CvCBQuad *quads, int res, IplImage *image,IplImage* imageRect,bool VisualizeResultsB, IplImage* imageDebugColor){
     //static int nb=0;
     unsigned char    patternW[11*11];
     unsigned char    patternB[11*11];
@@ -325,7 +324,7 @@ int determineQuadCode( CvCBQuad *quads, int res, IplImage *image,IplImage* image
 //===========================================================================
 // MAIN FUNCTION
 //===========================================================================
-int cvFindChessboardCorners3( const void* arr, CvSize pattern_size,
+int CalibTagFinder::cvFindChessboardCorners3( const void* arr, CvSize pattern_size,
                               CvPoint2D32f* out_corners, int* out_corner_count,
                               int min_number_of_corners )
 {
@@ -1094,7 +1093,7 @@ int cvFindChessboardCorners3( const void* arr, CvSize pattern_size,
 //===========================================================================
 // If we found too many connected quads, remove those which probably do not 
 // belong.
-int icvCleanFoundConnectedQuads( int quad_count, CvCBQuad **quad_group, CvSize pattern_size )
+int CalibTagFinder::icvCleanFoundConnectedQuads( int quad_count, CvCBQuad **quad_group, CvSize pattern_size )
 {
     CvMemStorage *temp_storage = 0;
     CvPoint2D32f *centers = 0;
@@ -1231,7 +1230,7 @@ int icvCleanFoundConnectedQuads( int quad_count, CvCBQuad **quad_group, CvSize p
 //===========================================================================
 // FIND COONECTED QUADS
 //===========================================================================
-int icvFindConnectedQuads( CvCBQuad *quad, int quad_count, CvCBQuad **out_group,
+int CalibTagFinder::icvFindConnectedQuads( CvCBQuad *quad, int quad_count, CvCBQuad **out_group,
                            int group_idx, CvMemStorage* storage)
 {
     //START TIMER
@@ -1302,7 +1301,7 @@ int icvFindConnectedQuads( CvCBQuad *quad, int quad_count, CvCBQuad **out_group,
 //===========================================================================
 // LABEL CORNER WITH ROW AND COLUMN //DONE
 //===========================================================================
-void mrLabelQuadGroup( CvCBQuad **quad_group, int count, CvSize pattern_size, bool firstRun )
+void CalibTagFinder::mrLabelQuadGroup( CvCBQuad **quad_group, int count, CvSize pattern_size, bool firstRun )
 {
     //START TIMER
     ofstream LabelQuadGroup;
@@ -1734,7 +1733,7 @@ void mrLabelQuadGroup( CvCBQuad **quad_group, int count, CvSize pattern_size, bo
 // Copies all necessary information of every quad of the largest found group
 // into a new Quad struct array. 
 // This information is then again needed in PART 2 of the MAIN LOOP
-void mrCopyQuadGroup( CvCBQuad **temp_quad_group, CvCBQuad **for_out_quad_group, int count )
+void CalibTagFinder::mrCopyQuadGroup( CvCBQuad **temp_quad_group, CvCBQuad **for_out_quad_group, int count )
 {
     for (int i = 0; i < count; i++)
     {
@@ -1763,7 +1762,7 @@ void mrCopyQuadGroup( CvCBQuad **temp_quad_group, CvCBQuad **for_out_quad_group,
 //===========================================================================
 // This function replaces mrFindQuadNeighbors, which in turn replaced
 // icvFindQuadNeighbors
-void mrFindQuadNeighbors2( CvCBQuad *quads, int quad_count, int dilation)
+void CalibTagFinder::mrFindQuadNeighbors2( CvCBQuad *quads, int quad_count, int dilation)
 {
     //START TIMER
     ofstream FindQuadNeighbors2;
@@ -2005,7 +2004,7 @@ void mrFindQuadNeighbors2( CvCBQuad *quads, int quad_count, int dilation)
 // "mrFindQuadNeighbors2"
 // The comparisons between two points and two lines could be computed in their
 // own function
-int mrAugmentBestRun( CvCBQuad *new_quads, int new_quad_count, int new_dilation,
+int CalibTagFinder::mrAugmentBestRun( CvCBQuad *new_quads, int new_quad_count, int new_dilation,
                       CvCBQuad **old_quads, int old_quad_count, int old_dilation )
 {
     //START TIMER
@@ -2717,7 +2716,7 @@ cvApproxPoly( const void*  array, int  header_size,
 //===========================================================================
 // GENERATE QUADRANGLES
 //===========================================================================
-int icvGenerateQuads( CvCBQuad **out_quads, CvCBCorner **out_corners,
+int CalibTagFinder::icvGenerateQuads( CvCBQuad **out_quads, CvCBCorner **out_corners,
                       CvMemStorage *storage, CvMat *image, int flags, bool firstRun )
 {
     //START TIMER
@@ -2943,7 +2942,7 @@ int icvGenerateQuads( CvCBQuad **out_quads, CvCBCorner **out_corners,
 //===========================================================================
 // WRITE CORNERS TO FILE
 //===========================================================================
-int mrWriteCorners( CvCBQuad **output_quads, int count, CvSize pattern_size, int min_number_of_corners, CvMat *image)
+int CalibTagFinder::mrWriteCorners( CvCBQuad **output_quads, int count, CvSize pattern_size, int min_number_of_corners, CvMat *image)
 {
     // Initialize
     int corner_count = 0;
