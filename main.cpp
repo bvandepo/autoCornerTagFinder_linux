@@ -13,11 +13,11 @@
     Reliability additions and modifications made by Philip Gruebele.
     <a href="mailto:pgruebele@cox.net">pgruebele@cox.net</a>
 
-	His code was adapted for use with low resolution and omnidirectional cameras
-	by Martin Rufli during his Master Thesis under supervision of Davide Scaramuzza, at the ETH Zurich. Further enhancements include:
-		- Increased chance of correct corner matching.
-		- Corner matching over all dilation runs.
-		
+    His code was adapted for use with low resolution and omnidirectional cameras
+    by Martin Rufli during his Master Thesis under supervision of Davide Scaramuzza, at the ETH Zurich. Further enhancements include:
+        - Increased chance of correct corner matching.
+        - Corner matching over all dilation runs.
+
 If you use this code, please cite the following articles:
 
 1. Scaramuzza, D., Martinelli, A. and Siegwart, R. (2006), A Toolbox for Easily Calibrating Omnidirectional Cameras, Proceedings of the IEEE/RSJ International Conference on Intelligent Robots and Systems  (IROS 2006), Beijing, China, October 2006.
@@ -68,189 +68,189 @@ donc il faudra changer le choix de la taille de mire de -h  vers autre chose...
 int main( int argc, char** argv )
 {
 
-	// Initializations
+    // Initializations
     CvSize board_size;
     board_size.width=8;
     board_size.height=8;
-	const char* input_filename		= 0;
-	CvCapture* capture				= 0;
-	FILE* f							= 0;
-	char imagename[1024];
+    const char* input_filename		= 0;
+    CvCapture* capture				= 0;
+    FILE* f							= 0;
+    char imagename[1024];
     //CvMemStorage* storage;
     //CvSeq* image_points_seq			= 0;
-	int elem_size;
-	CvPoint2D32f* image_points_buf	= 0;
+    int elem_size;
+    CvPoint2D32f* image_points_buf	= 0;
     CvSize img_size;
     img_size.width=0;
     img_size.height=0;
-	int found						= -2;
+    int found						= -2;
     int min_number_of_corners		= 10;
-	input_filename					= "pictures.txt";
-	//input_filename					= "myVideo2.avi";
+    input_filename					= "pictures.txt";
+    //input_filename					= "myVideo2.avi";
 
 
     cout<<"FindCorners.exe modified by BVDP"<<"\n";
-     cout << __DATE__ << endl << __TIME__ << endl;
+    cout << __DATE__ << endl << __TIME__ << endl;
     cout<<"app launched via: ";
     for (int j=0;j<argc;j++)
         cout<<argv[j]<<" ";
     cout<<"\n";
 
-	// Create error message file
-	ofstream error("outputImages/error.txt");
+    // Create error message file
+    ofstream error("outputImages/error.txt");
 
-//TODO: bvdp to remove later....
+    //TODO: bvdp to remove later....
     system("rm pictureVis/*.ppm");
 
 
-	// Read the "argv" function input arguments
-	for(int i = 1; i < argc; i++ )
-	{
-		const char* s = argv[i];
+    // Read the "argv" function input arguments
+    for(int i = 1; i < argc; i++ )
+    {
+        const char* s = argv[i];
         if( strcmp( s, "--help" ) == 0 )
         {
             cout <<"this will be helping someday...\n";
         }
-		if( strcmp( s, "-w" ) == 0 )
-		{
-			if( sscanf( argv[++i], "%u", &board_size.width ) != 1 || board_size.width <= 0 )
-			{
-				error << "Invalid board width" << endl;
-				error.close();
-				return -1;
-			}
-		}
-		else if( strcmp( s, "-h" ) == 0 )
-		{
-			if( sscanf( argv[++i], "%u", &board_size.height ) != 1 || board_size.height <= 0 )
-			{
-				error << "Invalid board height" << endl;
-				error.close();
-				return -1;
-			}
-		}
-		else if( strcmp( s, "-m" ) == 0 )
-		{
-			if( sscanf( argv[++i], "%u", &min_number_of_corners ) != 1 )
-			{
-				error << "Invalid minimal number of corners" << endl;
-				error.close();
-				return -1;
-			}
-		}
-		else if( s[0] != '-' )
-			input_filename = s;
-		else
-		{
-				error << "Unknown option" << endl;
-				error.close();
-				return -1;
-		}
-	}
+        if( strcmp( s, "-w" ) == 0 )
+        {
+            if( sscanf( argv[++i], "%u", &board_size.width ) != 1 || board_size.width <= 0 )
+            {
+                error << "Invalid board width" << endl;
+                error.close();
+                return -1;
+            }
+        }
+        else if( strcmp( s, "-h" ) == 0 )
+        {
+            if( sscanf( argv[++i], "%u", &board_size.height ) != 1 || board_size.height <= 0 )
+            {
+                error << "Invalid board height" << endl;
+                error.close();
+                return -1;
+            }
+        }
+        else if( strcmp( s, "-m" ) == 0 )
+        {
+            if( sscanf( argv[++i], "%u", &min_number_of_corners ) != 1 )
+            {
+                error << "Invalid minimal number of corners" << endl;
+                error.close();
+                return -1;
+            }
+        }
+        else if( s[0] != '-' )
+            input_filename = s;
+        else
+        {
+            error << "Unknown option" << endl;
+            error.close();
+            return -1;
+        }
+    }
 
 
-	// Close error message file
-	error.close();
+    // Close error message file
+    error.close();
 
-	// Figure out what kind of image input needs to be prepared
-	if( input_filename )
-	{
-		// Try to open a video sequence
-		//capture = cvCreateFileCapture( input_filename ); //OBRAND commented out
-		if( !capture )
-		{
-			// Try to open an input image
-			f = fopen( input_filename, "rt" );
-			if( !f )
-				return fprintf( stderr, "The input file could not be opened\n" ), -1;
-		}
-	}
-	else
-		// Open a live video stream
-		capture = cvCreateCameraCapture(0);
+    // Figure out what kind of image input needs to be prepared
+    if( input_filename )
+    {
+        // Try to open a video sequence
+        //capture = cvCreateFileCapture( input_filename ); //OBRAND commented out
+        if( !capture )
+        {
+            // Try to open an input image
+            f = fopen( input_filename, "rt" );
+            if( !f )
+                return fprintf( stderr, "The input file could not be opened\n" ), -1;
+        }
+    }
+    else
+        // Open a live video stream
+        capture = cvCreateCameraCapture(0);
 
-	// Nothing could be opened -> error
-	if( !capture && !f )
-		return fprintf( stderr, "Could not initialize video capture\n" ), -2;
-	
-	// Allocate memory
-	elem_size = board_size.width*board_size.height*sizeof(image_points_buf[0]);
+    // Nothing could be opened -> error
+    if( !capture && !f )
+        return fprintf( stderr, "Could not initialize video capture\n" ), -2;
+
+    // Allocate memory
+    elem_size = board_size.width*board_size.height*sizeof(image_points_buf[0]);
     //storage = cvCreateMemStorage( MAX( elem_size*4, 1 << 16 ));
-	image_points_buf = (CvPoint2D32f*)cvAlloc( elem_size );
+    image_points_buf = (CvPoint2D32f*)cvAlloc( elem_size );
     //image_points_seq = cvCreateSeq( 0, sizeof(CvSeq), elem_size, storage );
 
-	// For loop which goes through all images specified above
-	for(int j = 1;; j++)
-	{
-		// Initializations
+    // For loop which goes through all images specified above
+    for(int j = 1;; j++)
+    {
+        // Initializations
         IplImage *view = 0;//, *view_gray = 0;
         int count = 0;//, blink = 0;
         CvSize text_size; text_size.width=0;text_size.height=0;
         //int base_line = 0;
-		// Load the correct image...
-		if( f && fgets( imagename, sizeof(imagename)-2, f ))
-		{
+        // Load the correct image...
+        if( f && fgets( imagename, sizeof(imagename)-2, f ))
+        {
 
-			int l = (int) strlen(imagename);
-			if( l > 0 && imagename[l-1] == '\n' )
-				imagename[--l] = '\0';
-			if( l > 0 )
-			{
-				if( imagename[0] == '#' )
-					continue;
+            int l = (int) strlen(imagename);
+            if( l > 0 && imagename[l-1] == '\n' )
+                imagename[--l] = '\0';
+            if( l > 0 )
+            {
+                if( imagename[0] == '#' )
+                    continue;
                 cout<<"attempt to load "<< imagename <<"\n";
 
                 // Load as BGR 3 channel image
                 view = cvLoadImage( imagename, 1 );
                 // Currently the following file formats are supported:
-				// Windows bitmaps				BMP, DIB
-				// JPEG files					JPEG, JPG, JPE
-				// Portable Network Graphics	PNG
-				// Portable image format		PBM, PGM, PPM
-				// Sun rasters					SR, RAS
-				// TIFF files					TIFF, TIF
-				// NOTABLY: GIF IS NOT SUPPORTED!
-			}
-		}
-
-
-		// ...Or capture the correct frame from the video
-		else if( capture )
-		{
-			IplImage* view0 = cvQueryFrame( capture );
-			if( view0 )
-			{
-				view = cvCreateImage( cvGetSize(view0), IPL_DEPTH_8U, view0->nChannels );
-				if( view0->origin == IPL_ORIGIN_BL )
-					cvFlip( view0, view, 0 );
-				else
-					cvCopy( view0, view );
-			}
-		}
-
-		// If no more images are to be processed -> break
-		if( !view)
-        {
-			break;
-		}
-		// If esc key was pressed -> break
-		int key = cvWaitKey(10);
-		if( key == 27)
-		{
-			break;
+                // Windows bitmaps				BMP, DIB
+                // JPEG files					JPEG, JPG, JPE
+                // Portable Network Graphics	PNG
+                // Portable image format		PBM, PGM, PPM
+                // Sun rasters					SR, RAS
+                // TIFF files					TIFF, TIF
+                // NOTABLY: GIF IS NOT SUPPORTED!
+            }
         }
-		img_size = cvGetSize(view);
-		
+
+
+        // ...Or capture the correct frame from the video
+        else if( capture )
+        {
+            IplImage* view0 = cvQueryFrame( capture );
+            if( view0 )
+            {
+                view = cvCreateImage( cvGetSize(view0), IPL_DEPTH_8U, view0->nChannels );
+                if( view0->origin == IPL_ORIGIN_BL )
+                    cvFlip( view0, view, 0 );
+                else
+                    cvCopy( view0, view );
+            }
+        }
+
+        // If no more images are to be processed -> break
+        if( !view)
+        {
+            break;
+        }
+        // If esc key was pressed -> break
+        int key = cvWaitKey(10);
+        if( key == 27)
+        {
+            break;
+        }
+        img_size = cvGetSize(view);
+
         found = cvFindChessboardCorners3( view, board_size,
                                           image_points_buf, &count, min_number_of_corners );
 
-		if( !view )
-			break;
-		cvReleaseImage( &view );
-	}
-	if( capture )
-		cvReleaseCapture( &capture );
+        if( !view )
+            break;
+        cvReleaseImage( &view );
+    }
+    if( capture )
+        cvReleaseCapture( &capture );
     cout<<"return value"<< found<<"\n";
 
-	return found;
+    return found;
 }
