@@ -43,9 +43,7 @@ class CalibTagFinder
 public:
     CalibTagFinder();
 
-    int cvFindChessboardCorners3( const void* arr, CvSize pattern_size,
-                                  CvPoint2D32f* out_corners, int* out_corner_count,
-                                  int min_number_of_corners );
+    int cvFindChessboardCorners3( const void* arr);
     //===========================================================================
     // FUNCTION PROTOTYPES
     //===========================================================================
@@ -89,4 +87,26 @@ private:
     bool VisualizeResults;
     bool SaveTimerInfo;
 
+    CvSize board_size;
+    CvSize img_size;
+    int min_number_of_corners;
+
+    int elem_size;
+    CvPoint2D32f* image_points_buf;
+
+    int detectedCornersCount;
+
+public:
+    void setBoard_size_width(int argValue){
+        board_size.width=argValue;
+    }
+    void setBoard_size_height(int argValue){
+        board_size.height=argValue;
+    }
+    void setMin_number_of_corners(int argValue){
+        min_number_of_corners=argValue;
+    }
+    void setImgSize(CvSize s){
+        img_size =s;
+    }
 };

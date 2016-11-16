@@ -61,6 +61,20 @@ CalibTagFinder:: CalibTagFinder(){
 
     SaveTimerInfo=true; // Elapse the function duration times
 
+    board_size.width=8;
+    board_size.height=8;
+    img_size.width=0;
+    img_size.height=0;
+    min_number_of_corners		= 10;
+
+    image_points_buf	= 0;
+
+    //TODO: this have to be done again if the size changes
+    // Allocate memory
+    elem_size = board_size.width*board_size.height*sizeof(image_points_buf[0]);
+    //storage = cvCreateMemStorage( MAX( elem_size*4, 1 << 16 ));
+    image_points_buf = (CvPoint2D32f*)cvAlloc( elem_size );
+
 }
 
 
@@ -325,10 +339,13 @@ int CalibTagFinder::determineQuadCode( CvCBQuad *quads, int res, IplImage *image
 //===========================================================================
 // MAIN FUNCTION
 //===========================================================================
-int CalibTagFinder::cvFindChessboardCorners3( const void* arr, CvSize pattern_size,
-                              CvPoint2D32f* out_corners, int* out_corner_count,
-                              int min_number_of_corners )
+int CalibTagFinder::cvFindChessboardCorners3( const void* arr)
 {
+    setImgSize(cvGetSize(arr));
+    CvSize pattern_size=board_size;
+    CvPoint2D32f* out_corners=image_points_buf;
+    detectedCornersCount=0;
+    int* out_corner_count=&detectedCornersCount;
     //START TIMER
     ofstream FindChessboardCorners2;
     time_t  start_time=0;
@@ -1232,7 +1249,7 @@ int CalibTagFinder::icvCleanFoundConnectedQuads( int quad_count, CvCBQuad **quad
 // FIND COONECTED QUADS
 //===========================================================================
 int CalibTagFinder::icvFindConnectedQuads( CvCBQuad *quad, int quad_count, CvCBQuad **out_group,
-                           int group_idx, CvMemStorage* storage)
+                                           int group_idx, CvMemStorage* storage)
 {
     //START TIMER
     ofstream FindConnectedQuads;
@@ -2006,7 +2023,7 @@ void CalibTagFinder::mrFindQuadNeighbors2( CvCBQuad *quads, int quad_count, int 
 // The comparisons between two points and two lines could be computed in their
 // own function
 int CalibTagFinder::mrAugmentBestRun( CvCBQuad *new_quads, int new_quad_count, int new_dilation,
-                      CvCBQuad **old_quads, int old_quad_count, int old_dilation )
+                                      CvCBQuad **old_quads, int old_quad_count, int old_dilation )
 {
     //START TIMER
 
@@ -2355,7 +2372,7 @@ int CalibTagFinder::mrAugmentBestRun( CvCBQuad *new_quads, int new_quad_count, i
 // GENERATE QUADRANGLES
 //===========================================================================
 int CalibTagFinder::icvGenerateQuads( CvCBQuad **out_quads, CvCBCorner **out_corners,
-                      CvMemStorage *storage, CvMat *image, int flags, bool firstRun )
+                                      CvMemStorage *storage, CvMat *image, int flags, bool firstRun )
 {
     //START TIMER
     ofstream GenerateQuads;
