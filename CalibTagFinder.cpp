@@ -2786,14 +2786,28 @@ int CalibTagFinder::detectTags( CvCBQuad **output_quads, int count, CvSize patte
     float tabY [pattern_size.height+1][pattern_size.width+1];
 
     //reinitialization of tabX and tabY
-    for (int i=0;i<pattern_size.height;i++)
-        for (int j=0;j<pattern_size.width;j++)
+    for (int i=0;i<pattern_size.height+1;i++)
+        for (int j=0;j<pattern_size.width+1;j++)
         {
             tabX[i][j]=-1;
             tabY[i][j]=-1;
         }
+    int res=11; //size of the tag
+    //to store the reconstructed tag
+    CvSize tag_size;
+    tag_size.height=res;
+    tag_size.width=res;
+    IplImage* imageRect = cvCreateImage( tag_size, 8, 1 );
+    IplImage* imageDebug;
+    IplImage* imageDebugColor;
+    if (ShowFinalImage){// draw the row and column numbers
+        imageDebug= cvCreateImage( cvGetSize(image), 8, 1 );   //TODO DEALLOCATE
+        cvCopy( image, imageDebug);
+        imageDebugColor= cvCreateImage( cvGetSize(image), 8, 3 );
+        cvCvtColor( image, imageDebugColor, CV_GRAY2BGR );
+    }
 
-    //loops copied from mrWriteCorners
+    //loops copied from mrWriteCorners  // TODO: simplifier
     // Write the corners in increasing order to the output file
     for(int i = min_row + 1; i < maxPattern_sizeRow + min_row + 1; i++)
     {
@@ -2835,12 +2849,12 @@ int CalibTagFinder::detectTags( CvCBQuad **output_quads, int count, CvSize patte
     }
 
     //refine corners locations
-    vector<cv::Point2f> listP1(pattern_size.height*pattern_size.width);
+    vector<cv::Point2f> listP1((pattern_size.height+1)*(pattern_size.width+1));
     //keep without subpixelic refinement
-    vector<cv::Point2f> listP1raw(pattern_size.height*pattern_size.width);
+    vector<cv::Point2f> listP1raw((pattern_size.height+1)*(pattern_size.width+1));
 
-    for (int i=0;i<pattern_size.height;i++)
-        for (int j=0;j<pattern_size.width;j++)
+    for (int i=0;i<pattern_size.height+1;i++)
+        for (int j=0;j<pattern_size.width+1;j++)
         {
             float x=tabX[i][j];
             float y=tabY[i][j];
@@ -2850,8 +2864,8 @@ int CalibTagFinder::detectTags( CvCBQuad **output_quads, int count, CvSize patte
 
             //TODO: IMPORTANT avoid positions outside the image for cornerSubPix
 
-            listP1[j+i*pattern_size.width]=(cv::Point2f(x,y));
-            listP1raw[j+i*pattern_size.width]=(cv::Point2f(x,y));
+            listP1[j+i*(pattern_size.width+1)]=(cv::Point2f(x,y));
+            listP1raw[j+i*(pattern_size.width+1)]=(cv::Point2f(x,y));
 
         }
     //http://docs.opencv.org/2.4/modules/imgproc/doc/feature_detection.html#cornersubpix
@@ -2866,36 +2880,28 @@ int CalibTagFinder::detectTags( CvCBQuad **output_quads, int count, CvSize patte
         //BVDP
         cornerSubPix(im, listP1,cv::Size(7,7), cv::Size(-1,-1), cv::TermCriteria(cv::TermCriteria::COUNT+cv::TermCriteria::EPS,40,0.001));
         //   cornerSubPix can diverge: ie the points after optim can go far away from thr original location
-        for (int i=0;i<pattern_size.height;i++)
-            for (int j=0;j<pattern_size.width;j++)
+        for (int i=0;i<pattern_size.height+1;i++)
+            for (int j=0;j<pattern_size.width+1;j++)
             {
-                double dx=listP1[j+i*pattern_size.width].x-listP1raw[j+i*pattern_size.width].x;
-                double dy=listP1[j+i*pattern_size.width].y-listP1raw[j+i*pattern_size.width].y;
+                double dx=listP1[j+i*(pattern_size.width+1)].x-listP1raw[j+i*(pattern_size.width+1)].x;
+                double dy=listP1[j+i*(pattern_size.width+1)].y-listP1raw[j+i*(pattern_size.width+1)].y;
                 double d=sqrt(dx*dx + dy*dy);
                 if (d>10){
                     //too far from original location, move the point to dumb location, so it's gonna be ignored
-                    listP1[j+i*pattern_size.width].x=-1;
-                    listP1[j+i*pattern_size.width].y=-1;
+                    listP1[j+i*(pattern_size.width+1)].x=-1;
+                    listP1[j+i*(pattern_size.width+1)].y=-1;
                 }
             }
     }
 
     //(cv::InputArray)*image
-    for (int i=0;i<pattern_size.height;i++)
-        for (int j=0;j<pattern_size.width;j++)
+    for (int i=0;i<pattern_size.height+1;i++)
+        for (int j=0;j<pattern_size.width+1;j++)
         {
-            cv::Point2f p=listP1[j+i*pattern_size.width];
+            cv::Point2f p=listP1[j+i*(pattern_size.width+1)];
             tabX[i][j]=p.x;
             tabY[i][j]=p.y;
         }
-    int res=11;
-    //to store the reconstructed tag
-    CvSize tag_size;    tag_size.height=res;    tag_size.width=res;
-    IplImage* imageRect = cvCreateImage( tag_size, 8, 1 );
-    IplImage* imageDebug= cvCreateImage( cvGetSize(image), 8, 1 );
-    cvCopy( image, imageDebug);
-    IplImage* imageDebugColor= cvCreateImage( cvGetSize(image), 8, 3 );
-    cvCvtColor( image, imageDebugColor, CV_GRAY2BGR );
 
     //recreate a 2D array of quads containting Black and Whites quads for tag decoding
     for (int i=0;i<maxPattern_sizeRow-1;i++)
@@ -2930,6 +2936,68 @@ int CalibTagFinder::detectTags( CvCBQuad **output_quads, int count, CvSize patte
                 }
             }
         }
+
+
+    //loops copied from mrWriteCorners // TODO: simplifier
+    // Write the corners in increasing order to the output file
+    for(int i = min_row + 1; i < maxPattern_sizeRow + min_row + 1; i++)
+    {
+        for(int j = min_column + 1; j < maxPattern_sizeColumn + min_column + 1; j++)
+        {
+            // Reset the iterator
+            int iter = 1;
+            for(int k = 0; k < count; k++)
+            {
+                for(int l = 0; l < 4; l++)
+                {
+                    if(((output_quads[k])->corners[l]->row == i) && ((output_quads[k])->corners[l]->column == j) )
+                    {
+                        // Only write corners to the output file, which are connected
+                        // i.e. only if iter == 2
+                        if( iter == 2)
+                        {
+                             if (ShowFinalImage){// draw the row and column numbers
+                                char str[255];
+                                sprintf(str,"%i/%i",i,j);
+                                CvFont font;
+                                cvInitFont(&font, CV_FONT_HERSHEY_SIMPLEX, 0.2, 0.2, 0, 1);
+                                CvPoint ptt;
+                                ptt.x = (int) output_quads[k]->corners[l]->pt.x;
+                                ptt.y = (int) output_quads[k]->corners[l]->pt.y;
+                                // Mark central corners with a different color than
+                                // border corners
+                                if ((output_quads[k])->corners[l]->needsNeighbor == false)
+                                {
+                                    cvPutText(imageDebugColor, str, ptt, &font, CV_RGB(0,255,0));
+                                }
+                                else
+                                {
+                                    cvPutText(imageDebugColor, str, ptt, &font, CV_RGB(255,0,0));
+                                }
+                            }
+                        }
+                        // If the iterator is larger than two, this means that more than
+                        // two corners have the same row / column entries. Then some
+                        // linking errors must have occured and we should not use the found
+                        // pattern
+                        if (iter > 2)
+                            return -1;
+                        iter++;
+                    }
+                }
+            }
+
+            // If the respective row / column is non - existent or is a border corner
+            if (iter == 1 || iter == 2)
+            {
+                //TODO SPECIAL PROCESSING
+            }
+        }
+    }
+
+
+
+
     if (ShowFinalImage){
         cvNamedWindow( "Final Result", 1 );
         cvShowImage( "Final Result", imageDebugColor);
