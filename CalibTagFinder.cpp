@@ -813,7 +813,9 @@ int CalibTagFinder::cvFindChessboardCorners3( const void* arr)
 
 
     // If enough corners have been found already, then there is no need for PART 2 ->EXIT
-    found = mrWriteCorners( output_quad_group, max_count, pattern_size, min_number_of_corners,img);
+    processCorners( output_quad_group, max_count, pattern_size);
+    found = mrWriteCorners( output_quad_group, max_count, min_number_of_corners);
+    detectTags(output_quad_group, max_count, pattern_size,img);
     if (found == -1 || found == 1)
         EXIT;
 
@@ -1056,7 +1058,8 @@ int CalibTagFinder::cvFindChessboardCorners3( const void* arr)
 
                 // write the found corners to output array
                 // Go to __END__, if enough corners have been found
-                found = mrWriteCorners( output_quad_group, max_count, pattern_size, min_number_of_corners);
+                processCorners( output_quad_group, max_count, pattern_size);
+                found = mrWriteCorners( output_quad_group, max_count, min_number_of_corners);
                 if (found == -1 || found == 1)
                     EXIT;
             }
@@ -1071,7 +1074,7 @@ int CalibTagFinder::cvFindChessboardCorners3( const void* arr)
 
     /*
     // MARTIN:
-    found = mrWriteCorners( output_quad_group, max_count, pattern_size, min_number_of_corners);
+    found = mrWriteCorners( output_quad_group, max_count,min_number_of_corners);
     */
 
     // If a linking problem was encountered, throw an error message
@@ -2598,29 +2601,23 @@ int CalibTagFinder::icvGenerateQuads( CvCBQuad **out_quads, CvCBCorner **out_cor
 }
 
 
+
+
 //===========================================================================
-// WRITE CORNERS TO FILE
-//===========================================================================
-int CalibTagFinder::mrWriteCorners( CvCBQuad **output_quads, int count, CvSize pattern_size, int min_number_of_corners, CvMat *image)
+void CalibTagFinder::processCorners( CvCBQuad **output_quads, int count, CvSize pattern_size)
 {
     // Initialize
-    int corner_count = 0;
-    bool flagRow = false;
-    bool flagColumn = false;
-    int maxPattern_sizeRow = -1;
-    int maxPattern_sizeColumn = -1;
-
-
-    // Return variable
-    int internal_found = 0;
-
-
+    corner_count = 0;
+    flagRow = false;
+    flagColumn = false;
+    maxPattern_sizeRow = -1;
+    maxPattern_sizeColumn = -1;
     // Compute the minimum and maximum row / column ID
     // (it is unlikely that more than 8bit checkers are used per dimension)
-    int min_row		=  127;
-    int max_row		= -127;
-    int min_column	=  127;
-    int max_column	= -127;
+    min_row		=  127;
+    max_row		= -127;
+    min_column	=  127;
+    max_column	= -127;
 
     for(int i = 0; i < count; i++ )
     {
@@ -2639,12 +2636,6 @@ int CalibTagFinder::mrWriteCorners( CvCBQuad **output_quads, int count, CvSize p
         }
     }
 
-
-    //2D array of CvCBQuad to store every quads (black and white ones)
-    CvCBQuad tabq [pattern_size.height+1][pattern_size.width+1];
-    //Grid corners positions in 2D arrays
-    float tabX [pattern_size.height+1][pattern_size.width+1];
-    float tabY [pattern_size.height+1][pattern_size.width+1];
     // If in a given direction the target pattern size is reached, we know exactly how
     // the checkerboard is oriented.
     // Else we need to prepare enought "dummy" corners for the worst case.
@@ -2710,6 +2701,14 @@ int CalibTagFinder::mrWriteCorners( CvCBQuad **output_quads, int count, CvSize p
         maxPattern_sizeRow = max(pattern_size.width, pattern_size.height);
     }
 
+}
+//===========================================================================
+// WRITE CORNERS TO FILE
+//===========================================================================
+int CalibTagFinder::mrWriteCorners( CvCBQuad **output_quads, int count, int min_number_of_corners)
+{
+    // Return variable
+    int internal_found = 0;
 
     // Open the output files
     ofstream cornersX("cToMatlab/cornersX.txt");
@@ -2741,8 +2740,6 @@ int CalibTagFinder::mrWriteCorners( CvCBQuad **output_quads, int count, CvSize p
                             cornersX << " ";
                             cornersY << (output_quads[k])->corners[l]->pt.y;
                             cornersY << " ";
-                            tabX[i-(min_row + 1)][ j -(min_column + 1)]=(output_quads[k])->corners[l]->pt.x;
-                            tabY[i-(min_row + 1)][ j -(min_column + 1)]=(output_quads[k])->corners[l]->pt.y;
                             corner_count++;
                         }
 
@@ -2772,6 +2769,82 @@ int CalibTagFinder::mrWriteCorners( CvCBQuad **output_quads, int count, CvSize p
         cornersY << endl;
     }
 
+
+
+    // Write to the corner matrix size info file
+    cornerInfo << maxPattern_sizeRow<< " " << maxPattern_sizeColumn << endl;
+
+
+    // Close the output files
+    cornersX.close();
+    cornersY.close();
+    cornerInfo.close();
+
+    // check whether enough corners have been found
+    if (corner_count >= min_number_of_corners)
+        internal_found = 1;
+    else
+        internal_found = 0;
+
+
+    // pattern found, or not found?
+    return internal_found;
+}
+
+
+////////////////////////////////////////////////////
+
+int CalibTagFinder::detectTags( CvCBQuad **output_quads, int count, CvSize pattern_size, CvMat *image)
+{
+
+
+    //2D array of CvCBQuad to store every quads (black and white ones)
+    CvCBQuad tabq [pattern_size.height+1][pattern_size.width+1];
+    //Grid corners positions in 2D arrays
+    float tabX [pattern_size.height+1][pattern_size.width+1];
+    float tabY [pattern_size.height+1][pattern_size.width+1];
+
+    //loops copied from mrWriteCorners
+    // Write the corners in increasing order to the output file
+    for(int i = min_row + 1; i < maxPattern_sizeRow + min_row + 1; i++)
+    {
+        for(int j = min_column + 1; j < maxPattern_sizeColumn + min_column + 1; j++)
+        {
+            // Reset the iterator
+            int iter = 1;
+            for(int k = 0; k < count; k++)
+            {
+                for(int l = 0; l < 4; l++)
+                {
+                    if(((output_quads[k])->corners[l]->row == i) && ((output_quads[k])->corners[l]->column == j) )
+                    {
+                        // Only write corners to the output file, which are connected
+                        // i.e. only if iter == 2
+                        if( iter == 2)
+                        {
+                            tabX[i-(min_row + 1)][ j -(min_column + 1)]=(output_quads[k])->corners[l]->pt.x;
+                            tabY[i-(min_row + 1)][ j -(min_column + 1)]=(output_quads[k])->corners[l]->pt.y;
+                            corner_count++;
+                        }
+                        // If the iterator is larger than two, this means that more than
+                        // two corners have the same row / column entries. Then some
+                        // linking errors must have occured and we should not use the found
+                        // pattern
+                        if (iter > 2)
+                            return -1;
+                        iter++;
+                    }
+                }
+            }
+
+            // If the respective row / column is non - existent or is a border corner
+            if (iter == 1 || iter == 2)
+            {
+                //TODO SPECIAL PROCESSING
+            }
+        }
+    }
+
     //refine corners locations
     vector<cv::Point2f> listP1(pattern_size.height*pattern_size.width);
     //keep without subpixelic refinement
@@ -2794,26 +2867,15 @@ int CalibTagFinder::mrWriteCorners( CvCBQuad **output_quads, int count, CvSize p
         }
     //http://docs.opencv.org/2.4/modules/imgproc/doc/feature_detection.html#cornersubpix
 
-    //    cv::Mat im=*image;
-
     cv::Mat im=cv::cvarrToMat(image);
-
     //  cornerSubPix(im, listP1,cv::Size(15,15), cv::Size(-1,-1), cv::TermCriteria(cv::TermCriteria::COUNT+cv::TermCriteria::EPS,100000,0.00001));
-
     // cornerSubPix(im, listP1,cv::Size(5,5), cv::Size(-1,-1), cv::TermCriteria(cv::TermCriteria::COUNT,100000,0));
     //TODO: this call can segfault, maybe because of listP1 containting points outside the image boundaries
-
-
-
     //cornerSubPix(im, listP1,cv::Size(7,7), cv::Size(1,1), cv::TermCriteria(cv::TermCriteria::COUNT,1000,0));
-
-
     const bool refineSubPix=false;
-
     if (refineSubPix){  //CAREFULL: CAN SEGFAULT, TO INVESTIGATE
         //BVDP
         cornerSubPix(im, listP1,cv::Size(7,7), cv::Size(-1,-1), cv::TermCriteria(cv::TermCriteria::COUNT+cv::TermCriteria::EPS,40,0.001));
-
         //   cornerSubPix can diverge: ie the points after optim can go far away from thr original location
         for (int i=0;i<pattern_size.height;i++)
             for (int j=0;j<pattern_size.width;j++)
@@ -2887,26 +2949,9 @@ int CalibTagFinder::mrWriteCorners( CvCBQuad **output_quads, int count, CvSize p
     if (SaveFinalImage){
         cvSaveImage("pictureVis/allFoundQuadsB.ppm", imageDebugColor);
     }
-    // Write to the corner matrix size info file
-    cornerInfo << maxPattern_sizeRow<< " " << maxPattern_sizeColumn << endl;
-
-
-    // Close the output files
-    cornersX.close();
-    cornersY.close();
-    cornerInfo.close();
-
-    // check whether enough corners have been found
-    if (corner_count >= min_number_of_corners)
-        internal_found = 1;
-    else
-        internal_found = 0;
-
-
-    // pattern found, or not found?
-    return internal_found;
+    //TODO think about a way to return the result
+   return 1;
 }
-
 //===========================================================================
 // END OF FILE
 //===========================================================================

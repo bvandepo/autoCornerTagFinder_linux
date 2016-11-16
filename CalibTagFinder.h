@@ -70,10 +70,11 @@ private:
     int icvCleanFoundConnectedQuads( int quad_count, CvCBQuad **quads,
                                      CvSize pattern_size );
 
-    int mrWriteCorners( CvCBQuad **output_quads, int count, CvSize pattern_size,
-                        int min_number_of_corners, CvMat *image=NULL );
+    int mrWriteCorners( CvCBQuad **output_quads, int count, int min_number_of_corners);
 
+    void processCorners( CvCBQuad **output_quads, int count, CvSize pattern_size);
 
+    int detectTags( CvCBQuad **output_quads, int count, CvSize pattern_size, CvMat *image);
 
     int determineQuadCode( CvCBQuad *quads, int res, IplImage *image,IplImage* imageRect,bool VisualizeResultsB, IplImage* imageDebugColor);
     //determineQuadCode( CvCBQuad *quads, int res, CvMat *image);
@@ -95,6 +96,20 @@ private:
     CvPoint2D32f* image_points_buf;
 
     int detectedCornersCount;
+
+
+    // corners sorting etc...
+    int corner_count ;
+    bool flagRow ;
+    bool flagColumn ;
+    int maxPattern_sizeRow ;
+    int maxPattern_sizeColumn ;
+    int min_row;
+    int max_row;
+    int min_column;
+    int max_column;
+
+
 
 public:
     void setBoard_size_width(int argValue){
