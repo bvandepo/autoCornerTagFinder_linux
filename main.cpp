@@ -235,9 +235,7 @@ int main( int argc, char** argv )
         system("rm pictureVis/*.ppm");
 
         found = calibTagFinder->cvFindChessboardCorners3(view);
-
          IplImage* imageDebugColor=  calibTagFinder->getImageDebugColor();
-
          cvNamedWindow( "Final Result", 1 );
          cvShowImage( "Final Result", imageDebugColor);
          cvWaitKey(0);

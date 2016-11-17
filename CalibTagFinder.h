@@ -42,6 +42,7 @@ class CalibTagFinder
 
 public:
     CalibTagFinder();
+    ~CalibTagFinder();
 
     int cvFindChessboardCorners3( const void* arr);
     //===========================================================================
@@ -112,6 +113,18 @@ private:
 
     //image that display the results of the calibration pattern localization
     IplImage* imageDebugColor;
+
+    CvMat* norm_img;
+    CvMat* thresh_img;
+    CvMat* thresh_img_save;
+    CvMemStorage* storage;
+
+
+    IplImage* imageCopy2;
+    IplImage* imageCopy22;
+    IplImage* imageCopy3;
+    IplImage* imageCopy11;
+    IplImage* imageCopy23;
 
     void computeVisualizeResults(){
         VisualizeResults=ShowFinalImage || SaveFinalImage || ShowIntermediateImages || SaveIntermediateImages;  // Turn on visualization

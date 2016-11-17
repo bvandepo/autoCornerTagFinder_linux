@@ -77,10 +77,42 @@ CalibTagFinder:: CalibTagFinder(){
     //storage = cvCreateMemStorage( MAX( elem_size*4, 1 << 16 ));
     image_points_buf = (CvPoint2D32f*)cvAlloc( elem_size );
 
+
+    storage =  0;
+    norm_img =  0;
+    thresh_img =  0;
+    thresh_img_save =  0;
+    imageCopy2=0;
+    imageCopy22=0;
+    imageCopy3=0;
+    imageCopy11=0;
+    imageCopy23=0;
+
+    //TODO the quad lists are still never freed,  add memory managment...
 }
 
 
-
+CalibTagFinder:: ~CalibTagFinder(){
+    // Release allocated memory
+    if (storage!=0)
+        cvReleaseMemStorage( &storage );
+    if (norm_img!=0)
+        cvReleaseMat( &norm_img );
+    if (thresh_img!=0)
+        cvReleaseMat( &thresh_img );
+    if (thresh_img_save!=0)
+        cvReleaseMat( &thresh_img_save );
+    if (imageCopy2!=0)
+        cvReleaseImage(&imageCopy2 );
+    if (imageCopy22!=0)
+        cvReleaseImage(&imageCopy22 );
+    if (imageCopy3!=0)
+        cvReleaseImage(&imageCopy3 );
+    if (imageCopy11!=0)
+        cvReleaseImage(&imageCopy11 );
+    if (imageCopy23!=0)
+        cvReleaseImage(&imageCopy23 );
+}
 //___________________________________________________________________________
 int CalibTagFinder::determineQuadCode( CvCBQuad *quads, int res, IplImage *image,IplImage* imageRect,bool VisualizeResultsB, IplImage* imageDebugColor){
     //static int nb=0;
@@ -369,10 +401,7 @@ int CalibTagFinder::cvFindChessboardCorners3( const void* arr)
     const int min_dilations		=  1; //0; //bvdp: attempt to avoid deletion of quad that are thin due to its orientation, instead of 1;
     const int max_dilations		=  6;
     int found					=  0;
-    CvMat* norm_img				=  0;
-    CvMat* thresh_img			=  0;
-    CvMat* thresh_img_save		=  0;
-    CvMemStorage* storage		=  0;
+
 
     CvCBQuad *quads				=  0;
     CvCBQuad **quad_group		=  0;
@@ -438,9 +467,12 @@ int CalibTagFinder::cvFindChessboardCorners3( const void* arr)
 
 
     // Create memory storage
-    CV_CALL( storage = cvCreateMemStorage(0) );
-    CV_CALL( thresh_img = cvCreateMat( img->rows, img->cols, CV_8UC1 ));
-    CV_CALL( thresh_img_save = cvCreateMat( img->rows, img->cols, CV_8UC1 ));
+    if (storage==0)
+        CV_CALL( storage = cvCreateMemStorage(0) );
+    if (thresh_img ==0)
+        CV_CALL( thresh_img = cvCreateMat( img->rows, img->cols, CV_8UC1 ));
+    if (thresh_img_save==0)
+        CV_CALL( thresh_img_save = cvCreateMat( img->rows, img->cols, CV_8UC1 ));
 
 
     // Image histogramm normalization and
@@ -448,7 +480,8 @@ int CalibTagFinder::cvFindChessboardCorners3( const void* arr)
     // MARTIN: Set to "false"
     if( CV_MAT_CN(img->type) != 1 || (flags & CV_CALIB_CB_NORMALIZE_IMAGE) )
     {
-        CV_CALL( norm_img = cvCreateMat( img->rows, img->cols, CV_8UC1 ));
+        if (norm_img ==0)
+            CV_CALL( norm_img = cvCreateMat( img->rows, img->cols, CV_8UC1 ));
         if( CV_MAT_CN(img->type) != 1 )
         {
             CV_CALL( cvCvtColor( img, norm_img, CV_BGR2GRAY ));
@@ -578,11 +611,13 @@ int CalibTagFinder::cvFindChessboardCorners3( const void* arr)
         }
 
         //VISUALIZATION--------------------------------------------------------------
-        IplImage* imageCopy2;
-        IplImage* imageCopy22=NULL;
+
         if (VisualizeResults) {
-            imageCopy2 = cvCreateImage( cvGetSize(thresh_img), 8, 1 );
-            imageCopy22 = cvCreateImage( cvGetSize(thresh_img), 8, 3 );
+
+            if (imageCopy2==0)
+                imageCopy2 = cvCreateImage( cvGetSize(thresh_img), 8, 1 );
+            if (imageCopy22 ==0)
+                imageCopy22 = cvCreateImage( cvGetSize(thresh_img), 8, 3 );
             cvCopy( thresh_img, imageCopy2);
             cvCvtColor( imageCopy2, imageCopy22, CV_GRAY2BGR );
             for( int kkk = 0; kkk < quad_count; kkk++ )
@@ -624,7 +659,8 @@ int CalibTagFinder::cvFindChessboardCorners3( const void* arr)
 
         //VISUALIZATION--------------------------------------------------------------
         if (VisualizeResults) {
-            IplImage* imageCopy3 = cvCreateImage( cvGetSize(thresh_img), 8, 3 );
+            if (imageCopy3 ==0)
+                imageCopy3 = cvCreateImage( cvGetSize(thresh_img), 8, 3 );
             cvCopy( imageCopy22, imageCopy3);
             CvPoint pt;
             int scale = 0;
@@ -709,7 +745,8 @@ int CalibTagFinder::cvFindChessboardCorners3( const void* arr)
                 //VISUALIZATION--------------------------------------------------------------
                 if (VisualizeResults) {
                     // display all corners in INCREASING ROW AND COLUMN ORDER
-                    IplImage* imageCopy11 = cvCreateImage( cvGetSize(thresh_img), 8, 3 );
+                    if ( imageCopy11 ==0)
+                        imageCopy11 = cvCreateImage( cvGetSize(thresh_img), 8, 3 );
                     cvCopy( imageCopy22, imageCopy11);
                     // Assume min and max rows here, since we are outside of the
                     // relevant function
@@ -859,9 +896,9 @@ if(0){
         cvRectangle( thresh_img, cvPoint(0,0), cvPoint(thresh_img->cols-1,
                                                        thresh_img->rows-1), CV_RGB(255,255,255), 3, 8);
         //VISUALIZATION--------------------------------------------------------------
-        IplImage* imageCopy23=NULL;
         if (VisualizeResults) {
-            imageCopy23 = cvCreateImage( cvGetSize(thresh_img), 8, 3 );
+            if (imageCopy23 ==0)
+                imageCopy23 = cvCreateImage( cvGetSize(thresh_img), 8, 3 );
             cvCvtColor( thresh_img, imageCopy23, CV_GRAY2BGR );
             //to show the image before drawing the quads
             if (SaveIntermediateImages)
@@ -1089,10 +1126,7 @@ if(0){
     }
 
 
-    // Release allocated memory
-    cvReleaseMemStorage( &storage );
-    cvReleaseMat( &norm_img );
-    cvReleaseMat( &thresh_img );
+
     cvFree( &quads );
     cvFree( &corners );
     cvFree( &quad_group );
@@ -1765,7 +1799,7 @@ void CalibTagFinder::mrCopyQuadGroup( CvCBQuad **temp_quad_group, CvCBQuad **for
 {
     for (int i = 0; i < count; i++)
     {
-        for_out_quad_group[i]				= new CvCBQuad;
+        for_out_quad_group[i]				= new CvCBQuad;  //TODO: check if it is correctly deallocated
         for_out_quad_group[i]->count		= temp_quad_group[i]->count;
         for_out_quad_group[i]->edge_len		= temp_quad_group[i]->edge_len;
         for_out_quad_group[i]->group_idx	= temp_quad_group[i]->group_idx;
@@ -1773,7 +1807,7 @@ void CalibTagFinder::mrCopyQuadGroup( CvCBQuad **temp_quad_group, CvCBQuad **for
 
         for (int j = 0; j < 4; j++)
         {
-            for_out_quad_group[i]->corners[j]					= new CvCBCorner;
+            for_out_quad_group[i]->corners[j]					= new CvCBCorner; //TODO: check if it is correctly deallocated
             for_out_quad_group[i]->corners[j]->pt.x				= temp_quad_group[i]->corners[j]->pt.x;
             for_out_quad_group[i]->corners[j]->pt.y				= temp_quad_group[i]->corners[j]->pt.y;
             for_out_quad_group[i]->corners[j]->row				= temp_quad_group[i]->corners[j]->row;
@@ -2336,7 +2370,7 @@ int CalibTagFinder::mrAugmentBestRun( CvCBQuad *new_quads, int new_quad_count, i
 
 
                 // We have a new member of the final pattern, copy it over
-                old_quads[old_quad_count]				= new CvCBQuad;
+                old_quads[old_quad_count]				= new CvCBQuad; //TODO: check if it is correctly deallocated
                 old_quads[old_quad_count]->count		= 1;
                 old_quads[old_quad_count]->edge_len		= closest_quad->edge_len;
                 old_quads[old_quad_count]->group_idx	= cur_quad->group_idx;	//the same as the current quad
@@ -2352,7 +2386,7 @@ int CalibTagFinder::mrAugmentBestRun( CvCBQuad *new_quads, int new_quad_count, i
 
                 for (int j = 0; j < 4; j++)
                 {
-                    old_quads[old_quad_count]->corners[j]					= new CvCBCorner;
+                    old_quads[old_quad_count]->corners[j]					= new CvCBCorner; //TODO: check if it is correctly deallocated
                     old_quads[old_quad_count]->corners[j]->pt.x				= closest_quad->corners[j]->pt.x;
                     old_quads[old_quad_count]->corners[j]->pt.y				= closest_quad->corners[j]->pt.y;
                 }
