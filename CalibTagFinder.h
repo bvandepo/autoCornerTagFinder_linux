@@ -84,7 +84,7 @@ private:
     bool ShowFinalImage;
     bool SaveFinalImage;
     bool ShowIntermediateImages;
-    bool SaveIntermediateImagesForDebug;
+    bool SaveIntermediateImages;
     bool VisualizeResults;
     bool SaveTimerInfo;
 
@@ -110,7 +110,12 @@ private:
     int max_column;
 
 
+    //image that display the results of the calibration pattern localization
+    IplImage* imageDebugColor;
 
+    void computeVisualizeResults(){
+        VisualizeResults=ShowFinalImage || SaveFinalImage || ShowIntermediateImages || SaveIntermediateImages;  // Turn on visualization
+    }
 public:
     void setBoard_size_width(int argValue){
         board_size.width=argValue;
@@ -124,4 +129,25 @@ public:
     void setImgSize(CvSize s){
         img_size =s;
     }
+    IplImage* getImageDebugColor(){
+        return  imageDebugColor;
+    }
+
+    void setShowFinalImage(bool val){
+        ShowFinalImage=val;
+        computeVisualizeResults();
+    }
+    void setSaveFinalImage(bool val){
+        SaveFinalImage=val;
+        computeVisualizeResults();
+    }
+    void setShowIntermediateImages(bool val){
+        ShowIntermediateImages=val;
+        computeVisualizeResults();
+    }
+    void setSaveIntermediateImages(bool val){
+        SaveIntermediateImages=val;
+        computeVisualizeResults();
+    }
+
 };

@@ -87,6 +87,10 @@ int main( int argc, char** argv )
     ofstream error("outputImages/error.txt");
 
     CalibTagFinder* calibTagFinder=new CalibTagFinder();
+    calibTagFinder->setShowFinalImage(true);
+    calibTagFinder->setSaveFinalImage(true);
+    calibTagFinder->setShowIntermediateImages(false);
+    calibTagFinder->setSaveIntermediateImages(true);
 
     ////////////////////////////PARSING////////////////////////////////////////////
     // Read the "argv" function input arguments
@@ -227,8 +231,16 @@ int main( int argc, char** argv )
             break;
         }
 
+        //TODO: bvdp to remove later....
+        system("rm pictureVis/*.ppm");
+
         found = calibTagFinder->cvFindChessboardCorners3(view);
 
+         IplImage* imageDebugColor=  calibTagFinder->getImageDebugColor();
+
+         cvNamedWindow( "Final Result", 1 );
+         cvShowImage( "Final Result", imageDebugColor);
+         cvWaitKey(0);
 
         if( !view )
             break;

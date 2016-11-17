@@ -4,8 +4,7 @@
 #
 #-------------------------------------------------
 
-QT       += core
-
+QT       -= core
 QT       -= gui
 
 TARGET = FindCorners.exe
@@ -21,7 +20,9 @@ SOURCES += main.cpp CalibTagFinder.cpp
 SOURCES += PolygonApprox.cpp
 HEADERS += CalibTagFinder.h
 HEADERS += PolygonApprox.h
-DISTFILES += pictures.txt
+DISTFILES += pictures.txt \
+    generatelib.sh \
+    getData.sh
 
 #CONFIG+=OPENCV2411LOCAL
 CONFIG+=OPENCV31SYSTEM

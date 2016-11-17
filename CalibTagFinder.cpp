@@ -53,11 +53,11 @@ using std::ifstream;
 //Constructor
 CalibTagFinder:: CalibTagFinder(){
     ShowFinalImage=true;
-    SaveFinalImage=true;
+    SaveFinalImage=false;
     ShowIntermediateImages=false;
-    SaveIntermediateImagesForDebug=true;
+    SaveIntermediateImages=false;
 
-    VisualizeResults=ShowFinalImage || SaveFinalImage || ShowIntermediateImages || SaveIntermediateImagesForDebug;  // Turn on visualization
+    VisualizeResults=ShowFinalImage || SaveFinalImage || ShowIntermediateImages || SaveIntermediateImages;  // Turn on visualization
 
     SaveTimerInfo=true; // Elapse the function duration times
 
@@ -68,6 +68,8 @@ CalibTagFinder:: CalibTagFinder(){
     min_number_of_corners		= 10;
 
     image_points_buf	= 0;
+
+    imageDebugColor=NULL;
 
     //TODO: this have to be done again if the size changes
     // Allocate memory
@@ -348,8 +350,7 @@ int CalibTagFinder::cvFindChessboardCorners3( const void* arr)
     //int* out_corner_count=&detectedCornersCount;
 
 
-    //TODO: bvdp to remove later....
-    system("rm pictureVis/*.ppm");
+
 
 
     //START TIMER
@@ -481,7 +482,7 @@ int CalibTagFinder::cvFindChessboardCorners3( const void* arr)
         cvShowImage( "Original Image", img);
         cvWaitKey(0);
     }
-    if (SaveIntermediateImagesForDebug){
+    if (SaveIntermediateImages){
         cvSaveImage("pictureVis/OrigImg.ppm", img);
         cvSaveImage("pictureVis/TreshImg.ppm", thresh_img);
     }
@@ -542,7 +543,7 @@ int CalibTagFinder::cvFindChessboardCorners3( const void* arr)
             cvShowImage( "After adaptive Threshold (and Dilation)", thresh_img);
             cvWaitKey(0);
         }
-        if (SaveIntermediateImagesForDebug){
+        if (SaveIntermediateImages){
             char name[1000];
             sprintf(name,"pictureVis/afterDilation-%02d.ppm",dilations);
             cvSaveImage(name, thresh_img);
@@ -606,7 +607,7 @@ int CalibTagFinder::cvFindChessboardCorners3( const void* arr)
                 cvShowImage( "all found quads per dilation run", imageCopy22);
                 cvWaitKey(0);
             }
-            if (SaveIntermediateImagesForDebug){
+            if (SaveIntermediateImages){
                 char name[1000];
                 sprintf(name,"pictureVis/allFoundQuads-%02d.ppm",dilations);
                 cvSaveImage(name, imageCopy22);
@@ -652,7 +653,7 @@ int CalibTagFinder::cvFindChessboardCorners3( const void* arr)
                 cvShowImage( "quads with neighbors", imageCopy3);
                 cvWaitKey(0);
             }
-            if (SaveIntermediateImagesForDebug){
+            if (SaveIntermediateImages){
                 char name[1000];
                 sprintf(name,"pictureVis/allFoundNeighbors-%02d.ppm",dilations);
                 cvSaveImage(name, imageCopy3);
@@ -757,7 +758,7 @@ int CalibTagFinder::cvFindChessboardCorners3( const void* arr)
                         cvShowImage( "Corners in increasing order", imageCopy11);
                         cvWaitKey(0);
                     }
-                    if (SaveIntermediateImagesForDebug){
+                    if (SaveIntermediateImages){
                         char name[1000];
                         sprintf(name,"pictureVis/CornersIncreasingOrder-%02d-%05d.ppm",dilations,group_idx);
                         cvSaveImage(name, imageCopy11);
@@ -819,6 +820,9 @@ int CalibTagFinder::cvFindChessboardCorners3( const void* arr)
     if (found == -1 || found == 1)
         EXIT;
 
+    //BVANDEPO: SKIP THE SECOND ATTEMPT to avoid segfault
+if(0){
+
     cout << "SECOND ATTEMPT TO DETECT THE PATTERN!!!"<<endl;
 
     // PART 2: AUGMENT LARGEST PATTERN
@@ -860,7 +864,7 @@ int CalibTagFinder::cvFindChessboardCorners3( const void* arr)
             imageCopy23 = cvCreateImage( cvGetSize(thresh_img), 8, 3 );
             cvCvtColor( thresh_img, imageCopy23, CV_GRAY2BGR );
             //to show the image before drawing the quads
-            if (SaveIntermediateImagesForDebug)
+            if (SaveIntermediateImages)
                 cvSaveImage("pictureVis/part2StartB.ppm", imageCopy23);
             CvPoint pt[4];
             for( int kkk = 0; kkk < max_count; kkk++ )
@@ -887,7 +891,7 @@ int CalibTagFinder::cvFindChessboardCorners3( const void* arr)
                 cvShowImage( "PART2: Starting Point", imageCopy23);
                 cvWaitKey(0);
             }
-            if (SaveIntermediateImagesForDebug){
+            if (SaveIntermediateImages){
                 cvSaveImage("pictureVis/part2Start.ppm", imageCopy23);
             }
         }
@@ -966,7 +970,7 @@ int CalibTagFinder::cvFindChessboardCorners3( const void* arr)
                 cvShowImage( "PART2: Starting Point", imageCopy23);
                 cvWaitKey(0);
             }
-            if (SaveIntermediateImagesForDebug){
+            if (SaveIntermediateImages){
                 cvSaveImage("pictureVis/part2StartAndNewQuads.ppm", imageCopy23);
             }
 
@@ -1041,7 +1045,7 @@ int CalibTagFinder::cvFindChessboardCorners3( const void* arr)
                         cvShowImage( "PART2: Starting Point", imageCopy23);
                         cvWaitKey(0);
                     }
-                    if (SaveIntermediateImagesForDebug){
+                    if (SaveIntermediateImages){
                         cvSaveImage("pictureVis/part2StartAndSelectedQuad.ppm", imageCopy23);
                     }
                 }
@@ -1065,7 +1069,7 @@ int CalibTagFinder::cvFindChessboardCorners3( const void* arr)
         }
     }
 
-
+}
     // "End of file" jump point
     // After the command "EXIT" the code jumps here
     __END__;
@@ -2799,11 +2803,13 @@ int CalibTagFinder::detectTags( CvCBQuad **output_quads, int count, CvSize patte
     tag_size.width=res;
     IplImage* imageRect = cvCreateImage( tag_size, 8, 1 );
     IplImage* imageDebug;
-    IplImage* imageDebugColor;
+
     if (ShowFinalImage){// draw the row and column numbers
+
         imageDebug= cvCreateImage( cvGetSize(image), 8, 1 );   //TODO DEALLOCATE
         cvCopy( image, imageDebug);
-        imageDebugColor= cvCreateImage( cvGetSize(image), 8, 3 );
+        if (imageDebugColor==NULL)
+            imageDebugColor= cvCreateImage( cvGetSize(image), 8, 3 );
         cvCvtColor( image, imageDebugColor, CV_GRAY2BGR );
     }
 
@@ -2928,7 +2934,7 @@ int CalibTagFinder::detectTags( CvCBQuad **output_quads, int count, CvSize patte
                         cvNamedWindow( "reconstructed tag", 1 );
                         cvShowImage( "reconstructed tag", imageRect);
                     }
-                    if (SaveIntermediateImagesForDebug){
+                    if (SaveIntermediateImages){
                         char name[1000];
                         sprintf(name,"pictureVis/reconstructedtag_%04d.ppm",nb );
                         cvSaveImage(name, imageRect);
@@ -2996,13 +3002,14 @@ int CalibTagFinder::detectTags( CvCBQuad **output_quads, int count, CvSize patte
     }
 
 
-
-
+//done in the main
+/*
     if (ShowFinalImage){
         cvNamedWindow( "Final Result", 1 );
         cvShowImage( "Final Result", imageDebugColor);
         cvWaitKey(0);
     }
+    */
     if (SaveFinalImage){
         cvSaveImage("pictureVis/allFoundQuadsB.ppm", imageDebugColor);
     }
