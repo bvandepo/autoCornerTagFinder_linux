@@ -35,7 +35,7 @@ If you use this code, please cite the following articles:
 
 //#include <opencv2/core/internal.hpp>
 
-#include "cvcalibinit3.h"
+#include "CalibTagFinder.h"
 #define __BEGIN__ __CV_BEGIN__
 #define __END__ __CV_END__
 #define EXIT __CV_EXIT__
@@ -48,16 +48,39 @@ If you use this code, please cite the following articles:
 using namespace std;
 using std::ifstream;
 
-//global variables :(
-bool VisualizeResults=true;  // Turn on visualization
-bool WaitBetweenImages=false; // wait for the user to press a key between image, display will be produced only if this variable is set to true
-bool SaveTimerInfo=true; // Elapse the function duration times
+#include "PolygonApprox.h"
 
+//Constructor
+CalibTagFinder:: CalibTagFinder(){
+    ShowFinalImage=true;
+    SaveFinalImage=true;
+    ShowIntermediateImages=false;
+    SaveIntermediateImagesForDebug=true;
+
+    VisualizeResults=ShowFinalImage || SaveFinalImage || ShowIntermediateImages || SaveIntermediateImagesForDebug;  // Turn on visualization
+
+    SaveTimerInfo=true; // Elapse the function duration times
+
+    board_size.width=8;
+    board_size.height=8;
+    img_size.width=0;
+    img_size.height=0;
+    min_number_of_corners		= 10;
+
+    image_points_buf	= 0;
+
+    //TODO: this have to be done again if the size changes
+    // Allocate memory
+    elem_size = board_size.width*board_size.height*sizeof(image_points_buf[0]);
+    //storage = cvCreateMemStorage( MAX( elem_size*4, 1 << 16 ));
+    image_points_buf = (CvPoint2D32f*)cvAlloc( elem_size );
+
+}
 
 
 
 //___________________________________________________________________________
-int determineQuadCode( CvCBQuad *quads, int res, IplImage *image,IplImage* imageRect,bool VisualizeResultsB, IplImage* imageDebugColor,int debugNumber){
+int CalibTagFinder::determineQuadCode( CvCBQuad *quads, int res, IplImage *image,IplImage* imageRect,bool VisualizeResultsB, IplImage* imageDebugColor){
     //static int nb=0;
     unsigned char    patternW[11*11];
     unsigned char    patternB[11*11];
@@ -97,9 +120,9 @@ int determineQuadCode( CvCBQuad *quads, int res, IplImage *image,IplImage* image
 
     for (int u=0;u<res;u++)
         for (int v=0;v<res;v++) {
-           //pattern0[u+v*res]= -(-1+2*pattern0[u+v*res]);
-           //patternX[u+v*res]= +(-1+2*patternX[u+v*res]);
-           //patternY[u+v*res]= +(-1+2*patternY[u+v*res]);
+            //pattern0[u+v*res]= -(-1+2*pattern0[u+v*res]);
+            //patternX[u+v*res]= +(-1+2*patternX[u+v*res]);
+            //patternY[u+v*res]= +(-1+2*patternY[u+v*res]);
             patternB[u+v*res]= 0;
             patternW[u+v*res]= 1;
             //for negative pattern   pattern0[u+v*res]= pattern0[u+v*res];
@@ -118,7 +141,7 @@ int determineQuadCode( CvCBQuad *quads, int res, IplImage *image,IplImage* image
         }
     //count black pixel in each pattern
     memset(nbBlacksInPattern,0,nb_patterns);
-    for (int n=0;n<nb_patterns;n++)
+    for (unsigned int n=0;n<nb_patterns;n++)
         for (int u=1;u<res-1;u++)
             for (int v=1;v<res-1;v++) {
                 if (listPattern[n][u+v*res]==0)
@@ -146,10 +169,15 @@ int determineQuadCode( CvCBQuad *quads, int res, IplImage *image,IplImage* image
         pt[2].y = (int)print_quad->corners[2]->pt.y;
         pt[3].x = (int)print_quad->corners[3]->pt.x;
         pt[3].y = (int)print_quad->corners[3]->pt.y;
+        //red lines for the borders of the quad
         cvLine( imageDebugColor, pt[0], pt[1], CV_RGB(255,0,0), 1, 8 );
         cvLine( imageDebugColor, pt[1], pt[2], CV_RGB(255,0,0), 1, 8 );
         cvLine( imageDebugColor, pt[2], pt[3], CV_RGB(255,0,0), 1, 8 );
         cvLine( imageDebugColor, pt[3], pt[0], CV_RGB(255,0,0), 1, 8 );
+        //blue lines for the diagonals of the quad
+        cvLine( imageDebugColor, pt[0], pt[2], CV_RGB(0,0,255), 1, 8 );
+        cvLine( imageDebugColor, pt[1], pt[3], CV_RGB(0,0,255), 1, 8 );
+
     }
 
     //homography estimation
@@ -168,7 +196,16 @@ int determineQuadCode( CvCBQuad *quads, int res, IplImage *image,IplImage* image
     listP2.push_back(cv::Point2f(0,res-1));
     listP2.push_back(cv::Point2f(res-1,res-1));
     listP2.push_back(cv::Point2f(res-1,0));
+    //TODO: check that the 4 points ni listP1 are different from each other
     H=cv::findHomography(listP2,listP1,0);
+
+    if(H.cols==0)
+    {
+        int ret=-1; //default value, no tag found
+        return ret;
+    }
+
+    //do it only if an homography has been computed successfully
     if (0) cout <<H<<endl;
     for (int u=0;u<res;u++)
         for (int v=0;v<res;v++)        {
@@ -184,7 +221,7 @@ int determineQuadCode( CvCBQuad *quads, int res, IplImage *image,IplImage* image
             unsigned char val=255; //default value;
             //chech u2i,v2i is inside the image
             if ((u2i>=0) && (v2i>=0) && (u2i<image->width) && (v2i<image->height)) {
-                 val=image->imageData[u2i+v2i*image->widthStep];
+                val=image->imageData[u2i+v2i*image->widthStep];
             }
             reconstructedPattern[u+v*11]=val; //for faster access?
             imageRect->imageData[u+v*imageRect->widthStep]=val;
@@ -215,7 +252,7 @@ int determineQuadCode( CvCBQuad *quads, int res, IplImage *image,IplImage* image
     for (int val=0;val<256;val++){
         sum+=histo[val];
         histocumul[val]=sum;
-        for (int n=0;n<nb_patterns;n++){
+        for (unsigned int n=0;n<nb_patterns;n++){
             if ((sum>=nbBlacksInPattern[n]) && (thresholdForPattern[n]==0))
                 thresholdForPattern[n]=val;
         }
@@ -226,7 +263,7 @@ int determineQuadCode( CvCBQuad *quads, int res, IplImage *image,IplImage* image
         for (int v=1;v<res-1;v++)
         {
             int val= (unsigned char) reconstructedPattern[u+v*11];
-            for (int n=0;n<nb_patterns;n++){
+            for (unsigned int n=0;n<nb_patterns;n++){
                 // int n=3;{
                 if ((val>thresholdForPattern[n]) && ( listPattern[n][u+v*res]!=1))
                     errorForPattern[n]++;
@@ -265,10 +302,10 @@ int determineQuadCode( CvCBQuad *quads, int res, IplImage *image,IplImage* image
 
 
     //bvdp: TODO: if 2 patterns have been found, the third should be at a known position, so may be make the acceptable error higher for the remaining...
-    for (int n=2;n<nb_patterns;n++) //skip the black & white
+    for (unsigned int n=2;n<nb_patterns;n++) //skip the black & white
         if (errorForPattern[n]<= 1){ //allow for some pixel(s) to be erronneous // TODO check to find the best with no ambiguities
             //cout <<"debugNumber:" << debugNumber <<" pattern  "<< n<< " found " <<endl;
-            if (ret=-1)
+            if (ret==-1)
                 ret=n;  //return the detected code >=0
             else
                 ret=-2; //if multiple tag have been detected
@@ -294,6 +331,7 @@ int determineQuadCode( CvCBQuad *quads, int res, IplImage *image,IplImage* image
         ptt.x=(ptt.x/4)-11;
         ptt.y=(ptt.y/4)+11;
         cvPutText(imageDebugColor, namePattern[n], ptt, &font, CV_RGB(0,255,0));
+
     }
     return ret;
 }
@@ -301,13 +339,22 @@ int determineQuadCode( CvCBQuad *quads, int res, IplImage *image,IplImage* image
 //===========================================================================
 // MAIN FUNCTION
 //===========================================================================
-int cvFindChessboardCorners3( const void* arr, CvSize pattern_size,
-                              CvPoint2D32f* out_corners, int* out_corner_count,
-                              int min_number_of_corners )
+int CalibTagFinder::cvFindChessboardCorners3( const void* arr)
 {
+    setImgSize(cvGetSize(arr));
+    CvSize pattern_size=board_size;
+    //CvPoint2D32f* out_corners=image_points_buf;
+    detectedCornersCount=0;
+    //int* out_corner_count=&detectedCornersCount;
+
+
+    //TODO: bvdp to remove later....
+    system("rm pictureVis/*.ppm");
+
+
     //START TIMER
     ofstream FindChessboardCorners2;
-    time_t  start_time;
+    time_t  start_time=0;
     if (SaveTimerInfo){
         start_time = clock();
     }
@@ -361,6 +408,7 @@ int cvFindChessboardCorners3( const void* arr, CvSize pattern_size,
         error.close();
         return -1;
     }
+    /*
     if( pattern_size.width < 2 || pattern_size.height < 2 )
     {
         error << "Pattern should have at least 2x2 size" << endl;
@@ -373,20 +421,19 @@ int cvFindChessboardCorners3( const void* arr, CvSize pattern_size,
         error.close();
         return -1;
     }
-    /*
+
     if( pattern_size.width != pattern_size.height )
     {
         error << "In this implementation only square sized checker boards are supported" << endl;
         error.close();
         return -1;
     }
-    */
-    if( !out_corners )
+   if( !out_corners )
     {
         error << "Null pointer to corners encountered" << endl;
         error.close();
         return -1;
-    }
+    }*/
 
 
     // Create memory storage
@@ -401,13 +448,11 @@ int cvFindChessboardCorners3( const void* arr, CvSize pattern_size,
     if( CV_MAT_CN(img->type) != 1 || (flags & CV_CALIB_CB_NORMALIZE_IMAGE) )
     {
         CV_CALL( norm_img = cvCreateMat( img->rows, img->cols, CV_8UC1 ));
-
         if( CV_MAT_CN(img->type) != 1 )
         {
             CV_CALL( cvCvtColor( img, norm_img, CV_BGR2GRAY ));
             img = norm_img;
         }
-
         if(false)
         {
             cvEqualizeHist( img, norm_img );
@@ -431,12 +476,14 @@ int cvFindChessboardCorners3( const void* arr, CvSize pattern_size,
     cvCopy( thresh_img, thresh_img_save);
 
     //VISUALIZATION--------------------------------------------------------------
-    if (VisualizeResults) {
+    if (ShowIntermediateImages){
         cvNamedWindow( "Original Image", 1 );
         cvShowImage( "Original Image", img);
-        cvSaveImage("pictureVis/OrigImg.png", img);
-        cvSaveImage("pictureVis/TreshImg.png", thresh_img);
-        if (WaitBetweenImages) cvWaitKey(0);
+        cvWaitKey(0);
+    }
+    if (SaveIntermediateImagesForDebug){
+        cvSaveImage("pictureVis/OrigImg.ppm", img);
+        cvSaveImage("pictureVis/TreshImg.ppm", thresh_img);
     }
     //END------------------------------------------------------------------------
 
@@ -489,13 +536,16 @@ int cvFindChessboardCorners3( const void* arr, CvSize pattern_size,
         }
 
         //VISUALIZATION--------------------------------------------------------------
-        if (VisualizeResults) {
+
+        if (ShowIntermediateImages){
             cvNamedWindow( "After adaptive Threshold (and Dilation)", 1 );
             cvShowImage( "After adaptive Threshold (and Dilation)", thresh_img);
+            cvWaitKey(0);
+        }
+        if (SaveIntermediateImagesForDebug){
             char name[1000];
-            sprintf(name,"pictureVis/afterDilation-%02d.tif",dilations);
+            sprintf(name,"pictureVis/afterDilation-%02d.ppm",dilations);
             cvSaveImage(name, thresh_img);
-            if (WaitBetweenImages) cvWaitKey(0);
         }
         //END------------------------------------------------------------------------
 
@@ -507,15 +557,15 @@ int cvFindChessboardCorners3( const void* arr, CvSize pattern_size,
         cvRectangle( thresh_img, cvPoint(0,0), cvPoint(thresh_img->cols-1,
                                                        thresh_img->rows-1), CV_RGB(255,255,255), 3, 8);
 
+        //TODO: il y a des probleme avec ces images
         //bvdp, hack to debug icvGenerateQuads
-        //thresh_img = cvLoadImageM( "pictureVis/afterDilationCleanedByHand3.png", 0 );
-        //thresh_img = cvLoadImageM( "pictureVis/afterDilationCleanedByHand8.png", 0 );
-         //cvSaveImage("pictureVis/afterDilationCleanedByHandActu.png", thresh_img);
-
+        //thresh_img = cvLoadImageM( "pictureVis/pb/afterDilationCleanedByHand3.ppm", 0 );
+        //thresh_img = cvLoadImageM( "pictureVis/pb/afterDilationCleanedByHand8.ppm", 0 );
+        //cvSaveImage("pictureVis/afterDilationCleanedByHandActu.ppm", thresh_img);
 
         // Generate quadrangles in the following function
         // "quad_count" is the number of cound quadrangles
-        CV_CALL( quad_count = icvGenerateQuads( &quads, &corners, storage, thresh_img, flags, dilations, true ));
+        CV_CALL( quad_count = icvGenerateQuads( &quads, &corners, storage, thresh_img, flags, true ));
         if( quad_count <= 0 )
             continue;
 
@@ -528,14 +578,12 @@ int cvFindChessboardCorners3( const void* arr, CvSize pattern_size,
 
         //VISUALIZATION--------------------------------------------------------------
         IplImage* imageCopy2;
-        IplImage* imageCopy22;
+        IplImage* imageCopy22=NULL;
         if (VisualizeResults) {
-            cvNamedWindow( "all found quads per dilation run", 1 );
             imageCopy2 = cvCreateImage( cvGetSize(thresh_img), 8, 1 );
             imageCopy22 = cvCreateImage( cvGetSize(thresh_img), 8, 3 );
             cvCopy( thresh_img, imageCopy2);
             cvCvtColor( imageCopy2, imageCopy22, CV_GRAY2BGR );
-
             for( int kkk = 0; kkk < quad_count; kkk++ )
             {
                 CvCBQuad* print_quad = &quads[kkk];
@@ -553,11 +601,17 @@ int cvFindChessboardCorners3( const void* arr, CvSize pattern_size,
                 cvLine( imageCopy22, pt[2], pt[3], CV_RGB(255,255,0), 1, 8 );
                 cvLine( imageCopy22, pt[3], pt[0], CV_RGB(255,255,0), 1, 8 );
             }
-            cvShowImage( "all found quads per dilation run", imageCopy22);
-            char name[1000];
-            sprintf(name,"pictureVis/allFoundQuads-%02d.tif",dilations);
-            cvSaveImage(name, imageCopy22);
-            if (WaitBetweenImages) cvWaitKey(0);
+            if (ShowIntermediateImages){
+                cvNamedWindow( "all found quads per dilation run", 1 );
+                cvShowImage( "all found quads per dilation run", imageCopy22);
+                cvWaitKey(0);
+            }
+            if (SaveIntermediateImagesForDebug){
+                char name[1000];
+                sprintf(name,"pictureVis/allFoundQuads-%02d.ppm",dilations);
+                cvSaveImage(name, imageCopy22);
+            }
+
         }
         //END------------------------------------------------------------------------
 
@@ -569,7 +623,6 @@ int cvFindChessboardCorners3( const void* arr, CvSize pattern_size,
 
         //VISUALIZATION--------------------------------------------------------------
         if (VisualizeResults) {
-            cvNamedWindow( "quads with neighbors", 1 );
             IplImage* imageCopy3 = cvCreateImage( cvGetSize(thresh_img), 8, 3 );
             cvCopy( imageCopy22, imageCopy3);
             CvPoint pt;
@@ -594,11 +647,16 @@ int cvFindChessboardCorners3( const void* arr, CvSize pattern_size,
                     }
                 }
             }
-            cvShowImage( "quads with neighbors", imageCopy3);
-            char name[1000];
-            sprintf(name,"pictureVis/allFoundNeighbors-%02d.tif",dilations);
-            cvSaveImage(name, imageCopy3);
-            if (WaitBetweenImages) cvWaitKey(0);
+            if (ShowIntermediateImages){
+                cvNamedWindow( "quads with neighbors", 1 );
+                cvShowImage( "quads with neighbors", imageCopy3);
+                cvWaitKey(0);
+            }
+            if (SaveIntermediateImagesForDebug){
+                char name[1000];
+                sprintf(name,"pictureVis/allFoundNeighbors-%02d.ppm",dilations);
+                cvSaveImage(name, imageCopy3);
+            }
         }
         //END------------------------------------------------------------------------
 
@@ -619,7 +677,7 @@ int cvFindChessboardCorners3( const void* arr, CvSize pattern_size,
         for( group_idx = 0; ; group_idx++ )
         {
             int count;
-            CV_CALL( count = icvFindConnectedQuads( quads, quad_count, quad_group, group_idx, storage, dilations ));
+            CV_CALL( count = icvFindConnectedQuads( quads, quad_count, quad_group, group_idx, storage ));
 
             if( count == 0 )
                 break;
@@ -650,7 +708,6 @@ int cvFindChessboardCorners3( const void* arr, CvSize pattern_size,
                 //VISUALIZATION--------------------------------------------------------------
                 if (VisualizeResults) {
                     // display all corners in INCREASING ROW AND COLUMN ORDER
-                    cvNamedWindow( "Corners in increasing order", 1 );
                     IplImage* imageCopy11 = cvCreateImage( cvGetSize(thresh_img), 8, 3 );
                     cvCopy( imageCopy22, imageCopy11);
                     // Assume min and max rows here, since we are outside of the
@@ -687,18 +744,25 @@ int cvFindChessboardCorners3( const void* arr, CvSize pattern_size,
                                         {
                                             cvPutText(imageCopy11, str, ptt, &font, CV_RGB(255,0,0));
                                         }
-                                        cvShowImage( "Corners in increasing order", imageCopy11);
-                                        //cvSaveImage("pictureVis/CornersIncreasingOrder.tif", imageCopy11);
+                                        //cvShowImage( "Corners in increasing order", imageCopy11);
+                                        //cvSaveImage("pictureVis/CornersIncreasingOrder.ppm", imageCopy11);
                                         //if (WaitBetweenImages) cvWaitKey(0);
                                     }
                                 }
                             }
                         }
                     }
-                    char name[1000];
-                    sprintf(name,"pictureVis/CornersIncreasingOrder-%02d-%05d.tif",dilations,group_idx);
-                    cvSaveImage(name, imageCopy11);
-                    if (WaitBetweenImages) cvWaitKey(0);
+                    if (ShowIntermediateImages) {
+                        cvNamedWindow( "Corners in increasing order", 1 );
+                        cvShowImage( "Corners in increasing order", imageCopy11);
+                        cvWaitKey(0);
+                    }
+                    if (SaveIntermediateImagesForDebug){
+                        char name[1000];
+                        sprintf(name,"pictureVis/CornersIncreasingOrder-%02d-%05d.ppm",dilations,group_idx);
+                        cvSaveImage(name, imageCopy11);
+                    }
+
                 }
                 //END------------------------------------------------------------------------
 
@@ -734,7 +798,7 @@ int cvFindChessboardCorners3( const void* arr, CvSize pattern_size,
     //check each quad to determine if it contains a quad
     // for( int kkk = 0; kkk < max_count; kkk++ )
     //
-   /* if (1)
+    /* if (1)
     {
         //ne balaye que les cases noires du damier!!!!!
         int k=9;
@@ -749,7 +813,9 @@ int cvFindChessboardCorners3( const void* arr, CvSize pattern_size,
 
 
     // If enough corners have been found already, then there is no need for PART 2 ->EXIT
-    found = mrWriteCorners( output_quad_group, max_count, pattern_size, min_number_of_corners,img);
+    processCorners( output_quad_group, max_count, pattern_size);
+    found = mrWriteCorners( output_quad_group, max_count, min_number_of_corners);
+    detectTags(output_quad_group, max_count, pattern_size,img);
     if (found == -1 || found == 1)
         EXIT;
 
@@ -786,20 +852,17 @@ int cvFindChessboardCorners3( const void* arr, CvSize pattern_size,
             cvDilate( thresh_img, thresh_img, kernel1, 1);
         if (dilations >= 6)
             cvDilate( thresh_img, thresh_img, kernel2, 1);
-
         cvRectangle( thresh_img, cvPoint(0,0), cvPoint(thresh_img->cols-1,
                                                        thresh_img->rows-1), CV_RGB(255,255,255), 3, 8);
-
         //VISUALIZATION--------------------------------------------------------------
-        IplImage* imageCopy23;
+        IplImage* imageCopy23=NULL;
         if (VisualizeResults) {
-            cvNamedWindow( "PART2: Starting Point", 1 );
             imageCopy23 = cvCreateImage( cvGetSize(thresh_img), 8, 3 );
             cvCvtColor( thresh_img, imageCopy23, CV_GRAY2BGR );
-            //bvdp: to show the image before drawing the quads
-            cvSaveImage("pictureVis/part2StartB.png", imageCopy23);
-
-            CvPoint *pt = new CvPoint[4];
+            //to show the image before drawing the quads
+            if (SaveIntermediateImagesForDebug)
+                cvSaveImage("pictureVis/part2StartB.ppm", imageCopy23);
+            CvPoint pt[4];
             for( int kkk = 0; kkk < max_count; kkk++ )
             {
                 CvCBQuad* print_quad2 = output_quad_group[kkk];
@@ -811,6 +874,7 @@ int cvFindChessboardCorners3( const void* arr, CvSize pattern_size,
                 // draw a filled polygon
                 cvFillConvexPoly ( imageCopy23, pt, 4, CV_RGB(255*0.1,255*0.25,255*0.6));
             }
+
             // indicate the dilation run
             char str[255];
             sprintf(str,"Dilation Run No.: %i",dilations);
@@ -818,15 +882,19 @@ int cvFindChessboardCorners3( const void* arr, CvSize pattern_size,
             cvInitFont(&font, CV_FONT_HERSHEY_SIMPLEX, 0.5, 0.5, 0, 2);
             //bvdp uncommented, todo check it cannot fail:
             cvPutText(imageCopy23, str, cvPoint(20,20), &font, CV_RGB(0,255,0));
-
-            cvShowImage( "PART2: Starting Point", imageCopy23);
-            cvSaveImage("pictureVis/part2Start.png", imageCopy23);
-            if (WaitBetweenImages) cvWaitKey(0);
+            if (ShowIntermediateImages){
+                cvNamedWindow( "PART2: Starting Point", 1 );
+                cvShowImage( "PART2: Starting Point", imageCopy23);
+                cvWaitKey(0);
+            }
+            if (SaveIntermediateImagesForDebug){
+                cvSaveImage("pictureVis/part2Start.ppm", imageCopy23);
+            }
         }
         //END------------------------------------------------------------------------
 
 
-        CV_CALL( quad_count = icvGenerateQuads( &quads, &corners, storage, thresh_img, flags, dilations, false ));
+        CV_CALL( quad_count = icvGenerateQuads( &quads, &corners, storage, thresh_img, flags, false ));
         if( quad_count <= 0 )
             continue;
         //VISUALIZATION--------------------------------------------------------------
@@ -860,9 +928,9 @@ int cvFindChessboardCorners3( const void* arr, CvSize pattern_size,
                 // indicate the quad number in the image
                 char str[255];
                 sprintf(str,"%i",kkk);
-                //CvFont font;
-                //cvInitFont(&font, CV_FONT_HERSHEY_SIMPLEX, 0.5, 0.5, 0, 1);
-                //cvPutText(imageCopy23, str, cvPoint(x3,y3), &font, CV_RGB(0,255,255));
+                CvFont font;
+                cvInitFont(&font, CV_FONT_HERSHEY_SIMPLEX, 0.5, 0.5, 0, 1);
+                cvPutText(imageCopy23, str, cvPoint(x3,y3), &font, CV_RGB(0,255,255));
             }
 
             for( int kkk = 0; kkk < max_count; kkk++ )
@@ -890,14 +958,18 @@ int cvFindChessboardCorners3( const void* arr, CvSize pattern_size,
                 // indicate the quad number in the image
                 char str[255];
                 sprintf(str,"%i",kkk);
-                //CvFont font;
-                //cvInitFont(&font, CV_FONT_HERSHEY_SIMPLEX, 0.5, 0.5, 0, 1);
-                //cvPutText(imageCopy23, str, cvPoint(x3,y3), &font, CV_RGB(0,0,0));
+                CvFont font;
+                cvInitFont(&font, CV_FONT_HERSHEY_SIMPLEX, 0.5, 0.5, 0, 1);
+                cvPutText(imageCopy23, str, cvPoint(x3,y3), &font, CV_RGB(0,0,0));
+            }
+            if (ShowIntermediateImages){
+                cvShowImage( "PART2: Starting Point", imageCopy23);
+                cvWaitKey(0);
+            }
+            if (SaveIntermediateImagesForDebug){
+                cvSaveImage("pictureVis/part2StartAndNewQuads.ppm", imageCopy23);
             }
 
-            cvShowImage( "PART2: Starting Point", imageCopy23);
-            cvSaveImage("pictureVis/part2StartAndNewQuads.png", imageCopy23);
-            if (WaitBetweenImages) cvWaitKey(0);
         }
         //END------------------------------------------------------------------------
 
@@ -939,8 +1011,7 @@ int cvFindChessboardCorners3( const void* arr, CvSize pattern_size,
                         cvLine( imageCopy23, pt[2], pt[3], CV_RGB(255,0,0), 2, 8 );
                         cvLine( imageCopy23, pt[3], pt[0], CV_RGB(255,0,0), 2, 8 );
                     }
-
-                    if (WaitBetweenImages) cvWaitKey(0);
+                    //if (WaitBetweenImages) cvWaitKey(0);
                     // also draw the corner to which it is connected
                     // Remember it is not yet completely linked!!!
                     for( int kkk = 0; kkk < max_count; kkk++ )
@@ -966,9 +1037,13 @@ int cvFindChessboardCorners3( const void* arr, CvSize pattern_size,
                             }
                         }
                     }
-                    cvShowImage( "PART2: Starting Point", imageCopy23);
-                    cvSaveImage("pictureVis/part2StartAndSelectedQuad.png", imageCopy23);
-                    if (WaitBetweenImages) cvWaitKey(0);
+                    if (ShowIntermediateImages){
+                        cvShowImage( "PART2: Starting Point", imageCopy23);
+                        cvWaitKey(0);
+                    }
+                    if (SaveIntermediateImagesForDebug){
+                        cvSaveImage("pictureVis/part2StartAndSelectedQuad.ppm", imageCopy23);
+                    }
                 }
             }
             //END------------------------------------------------------------------------
@@ -982,7 +1057,8 @@ int cvFindChessboardCorners3( const void* arr, CvSize pattern_size,
 
                 // write the found corners to output array
                 // Go to __END__, if enough corners have been found
-                found = mrWriteCorners( output_quad_group, max_count, pattern_size, min_number_of_corners);
+                processCorners( output_quad_group, max_count, pattern_size);
+                found = mrWriteCorners( output_quad_group, max_count, min_number_of_corners);
                 if (found == -1 || found == 1)
                     EXIT;
             }
@@ -997,7 +1073,7 @@ int cvFindChessboardCorners3( const void* arr, CvSize pattern_size,
 
     /*
     // MARTIN:
-    found = mrWriteCorners( output_quad_group, max_count, pattern_size, min_number_of_corners);
+    found = mrWriteCorners( output_quad_group, max_count,min_number_of_corners);
     */
 
     // If a linking problem was encountered, throw an error message
@@ -1041,7 +1117,7 @@ int cvFindChessboardCorners3( const void* arr, CvSize pattern_size,
 //===========================================================================
 // If we found too many connected quads, remove those which probably do not 
 // belong.
-int icvCleanFoundConnectedQuads( int quad_count, CvCBQuad **quad_group, CvSize pattern_size )
+int CalibTagFinder::icvCleanFoundConnectedQuads( int quad_count, CvCBQuad **quad_group, CvSize pattern_size )
 {
     CvMemStorage *temp_storage = 0;
     CvPoint2D32f *centers = 0;
@@ -1178,12 +1254,12 @@ int icvCleanFoundConnectedQuads( int quad_count, CvCBQuad **quad_group, CvSize p
 //===========================================================================
 // FIND COONECTED QUADS
 //===========================================================================
-int icvFindConnectedQuads( CvCBQuad *quad, int quad_count, CvCBQuad **out_group,
-                       int group_idx, CvMemStorage* storage, int dilation )
+int CalibTagFinder::icvFindConnectedQuads( CvCBQuad *quad, int quad_count, CvCBQuad **out_group,
+                                           int group_idx, CvMemStorage* storage)
 {
     //START TIMER
     ofstream FindConnectedQuads;
-    time_t  start_time;
+    time_t  start_time=0;
     if (SaveTimerInfo){
         start_time= clock();
     }
@@ -1249,11 +1325,11 @@ int icvFindConnectedQuads( CvCBQuad *quad, int quad_count, CvCBQuad **out_group,
 //===========================================================================
 // LABEL CORNER WITH ROW AND COLUMN //DONE
 //===========================================================================
-void mrLabelQuadGroup( CvCBQuad **quad_group, int count, CvSize pattern_size, bool firstRun )
+void CalibTagFinder::mrLabelQuadGroup( CvCBQuad **quad_group, int count, CvSize pattern_size, bool firstRun )
 {
     //START TIMER
     ofstream LabelQuadGroup;
-    time_t  start_time;
+    time_t  start_time=0;
     if (SaveTimerInfo){
         start_time= clock();
     }
@@ -1681,7 +1757,7 @@ void mrLabelQuadGroup( CvCBQuad **quad_group, int count, CvSize pattern_size, bo
 // Copies all necessary information of every quad of the largest found group
 // into a new Quad struct array. 
 // This information is then again needed in PART 2 of the MAIN LOOP
-void mrCopyQuadGroup( CvCBQuad **temp_quad_group, CvCBQuad **for_out_quad_group, int count )
+void CalibTagFinder::mrCopyQuadGroup( CvCBQuad **temp_quad_group, CvCBQuad **for_out_quad_group, int count )
 {
     for (int i = 0; i < count; i++)
     {
@@ -1710,11 +1786,11 @@ void mrCopyQuadGroup( CvCBQuad **temp_quad_group, CvCBQuad **for_out_quad_group,
 //===========================================================================
 // This function replaces mrFindQuadNeighbors, which in turn replaced
 // icvFindQuadNeighbors
-void mrFindQuadNeighbors2( CvCBQuad *quads, int quad_count, int dilation)
+void CalibTagFinder::mrFindQuadNeighbors2( CvCBQuad *quads, int quad_count, int dilation)
 {
     //START TIMER
     ofstream FindQuadNeighbors2;
-    time_t  start_time;
+    time_t  start_time=0;
     if (SaveTimerInfo){
         start_time = clock();
     }
@@ -1728,7 +1804,7 @@ void mrFindQuadNeighbors2( CvCBQuad *quads, int quad_count, int dilation)
     const float thresh_dilation = (float)(2*dilation+3)*(2*dilation+3)*2;	// the "*2" is for the x and y component
     int idx, i, k, j;														// the "3" is for initial corner mismatch
     float dx, dy, dist;
-    int cur_quad_group = -1;
+    //int cur_quad_group = -1;
 
 
     // Find quad neighbors
@@ -1918,7 +1994,7 @@ void mrFindQuadNeighbors2( CvCBQuad *quads, int quad_count, int dilation)
                 if( j < 4 )
                     continue;
 
-//BVDP: here is the computation of the corner location
+                //BVDP: here is the computation of the corner location
                 // We've found one more corner - remember it
                 closest_corner->pt.x = (pt.x + closest_corner->pt.x) * 0.5f;
                 closest_corner->pt.y = (pt.y + closest_corner->pt.y) * 0.5f;
@@ -1952,13 +2028,13 @@ void mrFindQuadNeighbors2( CvCBQuad *quads, int quad_count, int dilation)
 // "mrFindQuadNeighbors2"
 // The comparisons between two points and two lines could be computed in their
 // own function
-int mrAugmentBestRun( CvCBQuad *new_quads, int new_quad_count, int new_dilation,
-                             CvCBQuad **old_quads, int old_quad_count, int old_dilation )
+int CalibTagFinder::mrAugmentBestRun( CvCBQuad *new_quads, int new_quad_count, int new_dilation,
+                                      CvCBQuad **old_quads, int old_quad_count, int old_dilation )
 {
     //START TIMER
 
     ofstream AugmentBestRun;
-    time_t  start_time;
+    time_t  start_time=0;
     if (SaveTimerInfo){
         start_time = clock();
     }
@@ -2298,378 +2374,15 @@ int mrAugmentBestRun( CvCBQuad *new_quads, int new_quad_count, int new_dilation,
     return 1;
 }
 
-
-/*
-BVDP:  This are copy of the two openCV functions in modules/imgproc/src/approx.cpp
-template<typename T> static CvSeq* icvApproxPolyDP( CvSeq* src_contour, int header_size,  CvMemStorage* storage, double eps )
-CV_IMPL CvSeq* cvApproxPoly
-
-in order to try to improve the polygonization for  quadrangles
-*/
-/****************************************************************************************\
-*                               Polygonal Approximation                                  *
-\****************************************************************************************/
-
-/* Ramer-Douglas-Peucker algorithm for polygon simplification */
-
-/* the version for integer point coordinates */
-template<typename T> CvSeq*
-icvApproxPolyDP( CvSeq* src_contour, int header_size,
-                 CvMemStorage* storage, double eps )
-{
-    typedef cv::Point_<T> PT;
-    int             init_iters = 3;
-    CvSlice         slice;
-    slice.start_index=0;
-    slice.end_index=0;
-    //= {0, 0},
-    CvSlice         right_slice;
-    right_slice.start_index=0;
-    right_slice.end_index=0;
-    //= {0, 0};
-    CvSeqReader     reader, reader2;
-    CvSeqWriter     writer;
-    PT              start_pt(-1000000, -1000000), end_pt(0, 0), pt(0,0);
-    int             i = 0, j, count = src_contour->total, new_count;
-    int             is_closed = CV_IS_SEQ_CLOSED( src_contour );
-    bool            le_eps = false;
-    CvMemStorage*   temp_storage = 0;
-    CvSeq*          stack = 0;
-    CvSeq*          dst_contour;
-
-    assert( CV_SEQ_ELTYPE(src_contour) == cv::DataType<PT>::type );
-    cvStartWriteSeq( src_contour->flags, header_size, sizeof(pt), storage, &writer );
-
-    if( src_contour->total == 0  )
-        return cvEndWriteSeq( &writer );
-
-    temp_storage = cvCreateChildMemStorage( storage );
-
-    assert( src_contour->first != 0 );
-    stack = cvCreateSeq( 0, sizeof(CvSeq), sizeof(CvSlice), temp_storage );
-    eps *= eps;
-    cvStartReadSeq( src_contour, &reader, 0 );
-
-    if( !is_closed )
-    {
-        right_slice.start_index = count;
-        end_pt = *(PT*)(reader.ptr);
-        start_pt = *(PT*)cvGetSeqElem( src_contour, -1 );
-
-        if( start_pt.x != end_pt.x || start_pt.y != end_pt.y )
-        {
-            slice.start_index = 0;
-            slice.end_index = count - 1;
-            cvSeqPush( stack, &slice );
-        }
-        else
-        {
-            is_closed = 1;
-            init_iters = 1;
-        }
-    }
-
-    if( is_closed )
-    {
-        /* 1. Find approximately two farthest points of the contour */
-        right_slice.start_index = 0;
-
-        for( i = 0; i < init_iters; i++ )
-        {
-            double dist, max_dist = 0;
-            cvSetSeqReaderPos( &reader, right_slice.start_index, 1 );
-            CV_READ_SEQ_ELEM( start_pt, reader );   /* read the first point */
-
-            for( j = 1; j < count; j++ )
-            {
-                double dx, dy;
-
-                CV_READ_SEQ_ELEM( pt, reader );
-                dx = pt.x - start_pt.x;
-                dy = pt.y - start_pt.y;
-
-                dist = dx * dx + dy * dy;
-
-                if( dist > max_dist )
-                {
-                    max_dist = dist;
-                    right_slice.start_index = j;
-                }
-            }
-
-            le_eps = max_dist <= eps;
-        }
-
-        /* 2. initialize the stack */
-        if( !le_eps )
-        {
-            slice.start_index = cvGetSeqReaderPos( &reader );
-            slice.end_index = right_slice.start_index += slice.start_index;
-
-            right_slice.start_index -= right_slice.start_index >= count ? count : 0;
-            right_slice.end_index = slice.start_index;
-            if( right_slice.end_index < right_slice.start_index )
-                right_slice.end_index += count;
-
-            cvSeqPush( stack, &right_slice );
-            cvSeqPush( stack, &slice );
-        }
-        else
-            CV_WRITE_SEQ_ELEM( start_pt, writer );
-    }
-
-    /* 3. run recursive process */
-    while( stack->total != 0 )
- //bvdp: try to do it only once
-    {
-        cvSeqPop( stack, &slice );
-
-        cvSetSeqReaderPos( &reader, slice.end_index );
-        CV_READ_SEQ_ELEM( end_pt, reader );
-
-        cvSetSeqReaderPos( &reader, slice.start_index );
-        CV_READ_SEQ_ELEM( start_pt, reader );
-
-        if( slice.end_index > slice.start_index + 1 )
-        {
-            double dx, dy, dist, max_dist = 0;
-
-            dx = end_pt.x - start_pt.x;
-            dy = end_pt.y - start_pt.y;
-
-            assert( dx != 0 || dy != 0 );
-
-            for( i = slice.start_index + 1; i < slice.end_index; i++ )
-            {
-                CV_READ_SEQ_ELEM( pt, reader );
-                dist = fabs((pt.y - start_pt.y) * dx - (pt.x - start_pt.x) * dy);
-
-                if( dist > max_dist )
-                {
-                    max_dist = dist;
-                    right_slice.start_index = i;
-                }
-            }
-
-            le_eps = max_dist * max_dist <= eps * (dx * dx + dy * dy);
-        }
-        else
-        {
-            assert( slice.end_index > slice.start_index );
-            le_eps = true;
-            /* read starting point */
-            cvSetSeqReaderPos( &reader, slice.start_index );
-            CV_READ_SEQ_ELEM( start_pt, reader );
-        }
-
-        if( le_eps )
-        {
-            CV_WRITE_SEQ_ELEM( start_pt, writer );
-        }
-        else
-        {
-            right_slice.end_index = slice.end_index;
-            slice.end_index = right_slice.start_index;
-            cvSeqPush( stack, &right_slice );
-            cvSeqPush( stack, &slice );
-        }
-    }
-
-    is_closed = CV_IS_SEQ_CLOSED( src_contour );
-    if( !is_closed )
-        CV_WRITE_SEQ_ELEM( end_pt, writer );
-
-    dst_contour = cvEndWriteSeq( &writer );
-
-    // last stage: do final clean-up of the approximated contour -
-    // remove extra points on the [almost] stright lines.
-
-    cvStartReadSeq( dst_contour, &reader, is_closed );
-    CV_READ_SEQ_ELEM( start_pt, reader );
-
-    reader2 = reader;
-    CV_READ_SEQ_ELEM( pt, reader );
-
-    new_count = count = dst_contour->total;
-    for( i = !is_closed; i < count - !is_closed && new_count > 2; i++ )
-    {
-        double dx, dy, dist, successive_inner_product;
-        CV_READ_SEQ_ELEM( end_pt, reader );
-
-        dx = end_pt.x - start_pt.x;
-        dy = end_pt.y - start_pt.y;
-        dist = fabs((pt.x - start_pt.x)*dy - (pt.y - start_pt.y)*dx);
-        successive_inner_product = (pt.x - start_pt.x) * (end_pt.x - pt.x) +
-            (pt.y - start_pt.y) * (end_pt.y - pt.y);
-
-        if( dist * dist <= 0.5*eps*(dx*dx + dy*dy) && dx != 0 && dy != 0 &&
-            successive_inner_product >= 0 )
-        {
-            new_count--;
-            *((PT*)reader2.ptr) = start_pt = end_pt;
-            CV_NEXT_SEQ_ELEM( sizeof(pt), reader2 );
-            CV_READ_SEQ_ELEM( pt, reader );
-            i++;
-            continue;
-        }
-        *((PT*)reader2.ptr) = start_pt = pt;
-        CV_NEXT_SEQ_ELEM( sizeof(pt), reader2 );
-        pt = end_pt;
-    }
-
-    if( !is_closed )
-        *((PT*)reader2.ptr) = pt;
-
-    if( new_count < count )
-        cvSeqPopMulti( dst_contour, 0, count - new_count );
-
-    cvReleaseMemStorage( &temp_storage );
-    return dst_contour;
-}
-
-
-
-
-CV_IMPL CvSeq*
-cvApproxPoly( const void*  array, int  header_size,
-              CvMemStorage*  storage, int  method,
-              double  parameter, int parameter2 )
-{
-    CvSeq* dst_seq = 0;
-    CvSeq *prev_contour = 0, *parent = 0;
-    CvContour contour_header;
-    CvSeq* src_seq = 0;
-    CvSeqBlock block;
-    int recursive = 0;
-
-    if( CV_IS_SEQ( array ))
-    {
-        src_seq = (CvSeq*)array;
-        if( !CV_IS_SEQ_POLYLINE( src_seq ))
-            CV_Error( CV_StsBadArg, "Unsupported sequence type" );
-
-        recursive = parameter2;
-
-        if( !storage )
-            storage = src_seq->storage;
-    }
-    else
-    {
-        src_seq = cvPointSeqFromMat(
-            CV_SEQ_KIND_CURVE | (parameter2 ? CV_SEQ_FLAG_CLOSED : 0),
-            array, &contour_header, &block );
-    }
-
-    if( !storage )
-        CV_Error( CV_StsNullPtr, "NULL storage pointer " );
-
-    if( header_size < 0 )
-        CV_Error( CV_StsOutOfRange, "header_size is negative. "
-                  "Pass 0 to make the destination header_size == input header_size" );
-
-    if( header_size == 0 )
-        header_size = src_seq->header_size;
-
-    if( !CV_IS_SEQ_POLYLINE( src_seq ))
-    {
-        if( CV_IS_SEQ_CHAIN( src_seq ))
-        {
-            CV_Error( CV_StsBadArg, "Input curves are not polygonal. "
-                                    "Use cvApproxChains first" );
-        }
-        else
-        {
-            CV_Error( CV_StsBadArg, "Input curves have uknown type" );
-        }
-    }
-
-    if( header_size == 0 )
-        header_size = src_seq->header_size;
-
-    if( header_size < (int)sizeof(CvContour) )
-        CV_Error( CV_StsBadSize, "New header size must be non-less than sizeof(CvContour)" );
-
-    if( method != CV_POLY_APPROX_DP )
-        CV_Error( CV_StsOutOfRange, "Unknown approximation method" );
-
-    while( src_seq != 0 )
-    {
-        CvSeq *contour = 0;
-
-        switch (method)
-        {
-        case CV_POLY_APPROX_DP:
-            if( parameter < 0 )
-                CV_Error( CV_StsOutOfRange, "Accuracy must be non-negative" );
-
-            if( CV_SEQ_ELTYPE(src_seq) == CV_32SC2 )
-                contour = icvApproxPolyDP<int>( src_seq, header_size, storage, parameter );
-            else
-                contour = icvApproxPolyDP<float>( src_seq, header_size, storage, parameter );
-            break;
-        default:
-            assert(0);
-            CV_Error( CV_StsBadArg, "Invalid approximation method" );
-        }
-
-        assert( contour );
-
-        if( header_size >= (int)sizeof(CvContour))
-            cvBoundingRect( contour, 1 );
-
-        contour->v_prev = parent;
-        contour->h_prev = prev_contour;
-
-        if( prev_contour )
-            prev_contour->h_next = contour;
-        else if( parent )
-            parent->v_next = contour;
-        prev_contour = contour;
-        if( !dst_seq )
-            dst_seq = prev_contour;
-
-        if( !recursive )
-            break;
-
-        if( src_seq->v_next )
-        {
-            assert( prev_contour != 0 );
-            parent = prev_contour;
-            prev_contour = 0;
-            src_seq = src_seq->v_next;
-        }
-        else
-        {
-            while( src_seq->h_next == 0 )
-            {
-                src_seq = src_seq->v_prev;
-                if( src_seq == 0 )
-                    break;
-                prev_contour = parent;
-                if( parent )
-                    parent = parent->v_prev;
-            }
-            if( src_seq )
-                src_seq = src_seq->h_next;
-        }
-    }
-
-    return dst_seq;
-}
-
-
-
-
-
 //===========================================================================
 // GENERATE QUADRANGLES
 //===========================================================================
-int icvGenerateQuads( CvCBQuad **out_quads, CvCBCorner **out_corners,
-                  CvMemStorage *storage, CvMat *image, int flags, int dilation, bool firstRun )
+int CalibTagFinder::icvGenerateQuads( CvCBQuad **out_quads, CvCBCorner **out_corners,
+                                      CvMemStorage *storage, CvMat *image, int flags, bool firstRun )
 {
     //START TIMER
     ofstream GenerateQuads;
-    time_t  start_time;
+    time_t  start_time=0;
     if (SaveTimerInfo){
         start_time = clock();
     }
@@ -2681,10 +2394,10 @@ int icvGenerateQuads( CvCBQuad **out_quads, CvCBCorner **out_corners,
 
 
 
-    IplImage* imageCopyCol;
-    if (VisualizeResults) {
-        imageCopyCol = cvCreateImage( cvGetSize(image), 8, 3 );
-    }
+    // IplImage* imageCopyCol;
+    // if (VisualizeResults) {
+    //     imageCopyCol = cvCreateImage( cvGetSize(image), 8, 3 );
+    // }
 
 
     if( out_quads )
@@ -2758,7 +2471,7 @@ int icvGenerateQuads( CvCBQuad **out_quads, CvCBCorner **out_corners,
 
                 //BVDP TODO: problem: number of corners go directly to 3 for thin quads
                 //maybe reimplement ~/Bureau/developpement/openCV/opencv-2.4.9/modules/imgproc/src/approx.cpp
-/*
+                /*
                 if (VisualizeResults) {
                     cvCvtColor( image, imageCopyCol, CV_GRAY2BGR );
                     CvPoint pt;
@@ -2766,7 +2479,7 @@ int icvGenerateQuads( CvCBQuad **out_quads, CvCBCorner **out_corners,
                         pt = *(CvPoint*)cvGetSeqElem(dst_contour, i);
                         cvCircle(imageCopyCol,pt, 2,CV_RGB(255,255,0), 1, 8 );
                     }
-                    cvSaveImage("pictureVis/allFoundCorners.png", imageCopyCol);
+                    cvSaveImage("pictureVis/allFoundCorners.ppm", imageCopyCol);
                 }
 */
                 if( dst_contour->total == 4 )
@@ -2778,30 +2491,30 @@ int icvGenerateQuads( CvCBQuad **out_quads, CvCBCorner **out_corners,
             if(dst_contour->total == 4 && cvCheckContourConvexity(dst_contour) )
             {
                 CvPoint pt[4];
-                double d1, d2, p = cvContourPerimeter(dst_contour);
-                double area = fabs(cvContourArea(dst_contour, CV_WHOLE_SEQ));
-                double dx, dy;
+                //double d1, d2, p = cvContourPerimeter(dst_contour);
+                //double area = fabs(cvContourArea(dst_contour, CV_WHOLE_SEQ));
+                //double dx, dy;
 
                 for( i = 0; i < 4; i++ )
                     pt[i] = *(CvPoint*)cvGetSeqElem(dst_contour, i);
 
-                dx = pt[0].x - pt[2].x;
-                dy = pt[0].y - pt[2].y;
-                d1 = sqrt(dx*dx + dy*dy);
+                //dx = pt[0].x - pt[2].x;
+                //dy = pt[0].y - pt[2].y;
+                // d1 = sqrt(dx*dx + dy*dy);
 
-                dx = pt[1].x - pt[3].x;
-                dy = pt[1].y - pt[3].y;
-                d2 = sqrt(dx*dx + dy*dy);
+                //dx = pt[1].x - pt[3].x;
+                //dy = pt[1].y - pt[3].y;
+                //d2 = sqrt(dx*dx + dy*dy);
 
                 // PHILIPG: Only accept those quadrangles which are more
                 // square than rectangular and which are big enough
-                double d3, d4;
-                dx = pt[0].x - pt[1].x;
-                dy = pt[0].y - pt[1].y;
-                d3 = sqrt(dx*dx + dy*dy);
-                dx = pt[1].x - pt[2].x;
-                dy = pt[1].y - pt[2].y;
-                d4 = sqrt(dx*dx + dy*dy);
+                //double d3, d4;
+                //dx = pt[0].x - pt[1].x;
+                //dy = pt[0].y - pt[1].y;
+                // d3 = sqrt(dx*dx + dy*dy);
+                //dx = pt[1].x - pt[2].x;
+                //dy = pt[1].y - pt[2].y;
+                //d4 = sqrt(dx*dx + dy*dy);
                 if(true)//!(flags & CV_CALIB_CB_FILTER_QUADS) ||
                     //d3*4 > d4 && d4*4 > d3 && d3*d4 < area*1.5 && area > min_size &&
                     //d1 >= 0.15 * p && d2 >= 0.15 * p )
@@ -2888,29 +2601,22 @@ int icvGenerateQuads( CvCBQuad **out_quads, CvCBCorner **out_corners,
 
 
 
+
 //===========================================================================
-// WRITE CORNERS TO FILE
-//===========================================================================
-int mrWriteCorners( CvCBQuad **output_quads, int count, CvSize pattern_size, int min_number_of_corners, CvMat *image)
+void CalibTagFinder::processCorners( CvCBQuad **output_quads, int count, CvSize pattern_size)
 {
     // Initialize
-    int corner_count = 0;
-    bool flagRow = false;
-    bool flagColumn = false;
-    int maxPattern_sizeRow = -1;
-    int maxPattern_sizeColumn = -1;
-
-
-    // Return variable
-    int internal_found = 0;
-
-
+    corner_count = 0;
+    flagRow = false;
+    flagColumn = false;
+    maxPattern_sizeRow = -1;
+    maxPattern_sizeColumn = -1;
     // Compute the minimum and maximum row / column ID
     // (it is unlikely that more than 8bit checkers are used per dimension)
-    int min_row		=  127;
-    int max_row		= -127;
-    int min_column	=  127;
-    int max_column	= -127;
+    min_row		=  127;
+    max_row		= -127;
+    min_column	=  127;
+    max_column	= -127;
 
     for(int i = 0; i < count; i++ )
     {
@@ -2929,12 +2635,6 @@ int mrWriteCorners( CvCBQuad **output_quads, int count, CvSize pattern_size, int
         }
     }
 
-
-    //2D array of CvCBQuad to store every quads (black and white ones)
-    CvCBQuad tabq [pattern_size.height+1][pattern_size.width+1];
-    //Grid corners positions in 2D arrays
-    float tabX [pattern_size.height+1][pattern_size.width+1];
-    float tabY [pattern_size.height+1][pattern_size.width+1];
     // If in a given direction the target pattern size is reached, we know exactly how
     // the checkerboard is oriented.
     // Else we need to prepare enought "dummy" corners for the worst case.
@@ -2964,7 +2664,7 @@ int mrWriteCorners( CvCBQuad **output_quads, int count, CvSize pattern_size, int
             }
         }
     }
-//determine the orientation
+    //determine the orientation
     if( flagColumn == true)
     {
         if( max_column - min_column == pattern_size.width + 1)
@@ -2999,14 +2699,18 @@ int mrWriteCorners( CvCBQuad **output_quads, int count, CvSize pattern_size, int
         maxPattern_sizeColumn = max(pattern_size.width, pattern_size.height);
         maxPattern_sizeRow = max(pattern_size.width, pattern_size.height);
     }
-
-
+}
+//===========================================================================
+// WRITE CORNERS TO FILE
+//===========================================================================
+int CalibTagFinder::mrWriteCorners( CvCBQuad **output_quads, int count, int min_number_of_corners)
+{
+    // Return variable
+    int internal_found = 0;
     // Open the output files
     ofstream cornersX("cToMatlab/cornersX.txt");
     ofstream cornersY("cToMatlab/cornersY.txt");
     ofstream cornerInfo("cToMatlab/cornerInfo.txt");
-
-
     // Write the corners in increasing order to the output file
     for(int i = min_row + 1; i < maxPattern_sizeRow + min_row + 1; i++)
     {
@@ -3014,7 +2718,6 @@ int mrWriteCorners( CvCBQuad **output_quads, int count, CvSize pattern_size, int
         {
             // Reset the iterator
             int iter = 1;
-
             for(int k = 0; k < count; k++)
             {
                 for(int l = 0; l < 4; l++)
@@ -3031,24 +2734,18 @@ int mrWriteCorners( CvCBQuad **output_quads, int count, CvSize pattern_size, int
                             cornersX << " ";
                             cornersY << (output_quads[k])->corners[l]->pt.y;
                             cornersY << " ";
-                            tabX[i-(min_row + 1)][ j -(min_column + 1)]=(output_quads[k])->corners[l]->pt.x;
-                            tabY[i-(min_row + 1)][ j -(min_column + 1)]=(output_quads[k])->corners[l]->pt.y;
                             corner_count++;
                         }
-
-
                         // If the iterator is larger than two, this means that more than
                         // two corners have the same row / column entries. Then some
                         // linking errors must have occured and we should not use the found
                         // pattern
                         if (iter > 2)
                             return -1;
-
                         iter++;
                     }
                 }
             }
-
             // If the respective row / column is non - existent or is a border corner
             if (iter == 1 || iter == 2)
             {
@@ -3061,55 +2758,156 @@ int mrWriteCorners( CvCBQuad **output_quads, int count, CvSize pattern_size, int
         cornersX << endl;
         cornersY << endl;
     }
+    // Write to the corner matrix size info file
+    cornerInfo << maxPattern_sizeRow<< " " << maxPattern_sizeColumn << endl;
+    // Close the output files
+    cornersX.close();
+    cornersY.close();
+    cornerInfo.close();
+    // check whether enough corners have been found
+    if (corner_count >= min_number_of_corners)
+        internal_found = 1;
+    else
+        internal_found = 0;
+    // pattern found, or not found?
+    return internal_found;
+}
+
+
+////////////////////////////////////////////////////
+
+int CalibTagFinder::detectTags( CvCBQuad **output_quads, int count, CvSize pattern_size, CvMat *image)
+{
+
+    //2D array of CvCBQuad to store every quads (black and white ones)
+    CvCBQuad tabq [pattern_size.height+1][pattern_size.width+1];
+    //Grid corners positions in 2D arrays
+    float tabX [pattern_size.height+1][pattern_size.width+1];
+    float tabY [pattern_size.height+1][pattern_size.width+1];
+
+    //reinitialization of tabX and tabY
+    for (int i=0;i<pattern_size.height+1;i++)
+        for (int j=0;j<pattern_size.width+1;j++)
+        {
+            tabX[i][j]=-1;
+            tabY[i][j]=-1;
+        }
+    int res=11; //size of the tag
+    //to store the reconstructed tag
+    CvSize tag_size;
+    tag_size.height=res;
+    tag_size.width=res;
+    IplImage* imageRect = cvCreateImage( tag_size, 8, 1 );
+    IplImage* imageDebug;
+    IplImage* imageDebugColor;
+    if (ShowFinalImage){// draw the row and column numbers
+        imageDebug= cvCreateImage( cvGetSize(image), 8, 1 );   //TODO DEALLOCATE
+        cvCopy( image, imageDebug);
+        imageDebugColor= cvCreateImage( cvGetSize(image), 8, 3 );
+        cvCvtColor( image, imageDebugColor, CV_GRAY2BGR );
+    }
+
+    //loops copied from mrWriteCorners  // TODO: simplifier
+    // Write the corners in increasing order to the output file
+    for(int i = min_row + 1; i < maxPattern_sizeRow + min_row + 1; i++)
+    {
+        for(int j = min_column + 1; j < maxPattern_sizeColumn + min_column + 1; j++)
+        {
+            // Reset the iterator
+            int iter = 1;
+            for(int k = 0; k < count; k++)
+            {
+                for(int l = 0; l < 4; l++)
+                {
+                    if(((output_quads[k])->corners[l]->row == i) && ((output_quads[k])->corners[l]->column == j) )
+                    {
+                        // Only write corners to the output file, which are connected
+                        // i.e. only if iter == 2
+                        if( iter == 2)
+                        {
+                            tabX[i-(min_row + 1)][ j -(min_column + 1)]=(output_quads[k])->corners[l]->pt.x;
+                            tabY[i-(min_row + 1)][ j -(min_column + 1)]=(output_quads[k])->corners[l]->pt.y;
+                            corner_count++;
+                        }
+                        // If the iterator is larger than two, this means that more than
+                        // two corners have the same row / column entries. Then some
+                        // linking errors must have occured and we should not use the found
+                        // pattern
+                        if (iter > 2)
+                            return -1;
+                        iter++;
+                    }
+                }
+            }
+
+            // If the respective row / column is non - existent or is a border corner
+            if (iter == 1 || iter == 2)
+            {
+                //TODO SPECIAL PROCESSING
+            }
+        }
+    }
 
     //refine corners locations
-    vector<cv::Point2f> listP1(pattern_size.height*pattern_size.width);
-    for (int i=0;i<pattern_size.height;i++)
-        for (int j=0;j<pattern_size.width;j++)
+    vector<cv::Point2f> listP1((pattern_size.height+1)*(pattern_size.width+1));
+    //keep without subpixelic refinement
+    vector<cv::Point2f> listP1raw((pattern_size.height+1)*(pattern_size.width+1));
+
+    for (int i=0;i<pattern_size.height+1;i++)
+        for (int j=0;j<pattern_size.width+1;j++)
         {
             float x=tabX[i][j];
             float y=tabY[i][j];
+            //hack
+            x=MAX(MIN(x,image->width-2),1);
+            y=MAX(MIN(y,image->height-2),1);
+
             //TODO: IMPORTANT avoid positions outside the image for cornerSubPix
-            listP1[j+i*pattern_size.width]=(cv::Point2f(x,y));
+
+            listP1[j+i*(pattern_size.width+1)]=(cv::Point2f(x,y));
+            listP1raw[j+i*(pattern_size.width+1)]=(cv::Point2f(x,y));
+
         }
     //http://docs.opencv.org/2.4/modules/imgproc/doc/feature_detection.html#cornersubpix
 
-//    cv::Mat im=*image;
-
     cv::Mat im=cv::cvarrToMat(image);
-
-  //  cornerSubPix(im, listP1,cv::Size(15,15), cv::Size(-1,-1), cv::TermCriteria(cv::TermCriteria::COUNT+cv::TermCriteria::EPS,100000,0.00001));
-
-   // cornerSubPix(im, listP1,cv::Size(5,5), cv::Size(-1,-1), cv::TermCriteria(cv::TermCriteria::COUNT,100000,0));
-//TODO: this call can segfault, maybe because of listP1 containting points outside the image boundaries
-
+    //  cornerSubPix(im, listP1,cv::Size(15,15), cv::Size(-1,-1), cv::TermCriteria(cv::TermCriteria::COUNT+cv::TermCriteria::EPS,100000,0.00001));
+    // cornerSubPix(im, listP1,cv::Size(5,5), cv::Size(-1,-1), cv::TermCriteria(cv::TermCriteria::COUNT,100000,0));
+    //TODO: this call can segfault, maybe because of listP1 containting points outside the image boundaries
     //cornerSubPix(im, listP1,cv::Size(7,7), cv::Size(1,1), cv::TermCriteria(cv::TermCriteria::COUNT,1000,0));
+    const bool refineSubPix=false;
+    if (refineSubPix){  //CAREFULL: CAN SEGFAULT, TO INVESTIGATE
+        //BVDP
+        cornerSubPix(im, listP1,cv::Size(7,7), cv::Size(-1,-1), cv::TermCriteria(cv::TermCriteria::COUNT+cv::TermCriteria::EPS,40,0.001));
+        //   cornerSubPix can diverge: ie the points after optim can go far away from thr original location
+        for (int i=0;i<pattern_size.height+1;i++)
+            for (int j=0;j<pattern_size.width+1;j++)
+            {
+                double dx=listP1[j+i*(pattern_size.width+1)].x-listP1raw[j+i*(pattern_size.width+1)].x;
+                double dy=listP1[j+i*(pattern_size.width+1)].y-listP1raw[j+i*(pattern_size.width+1)].y;
+                double d=sqrt(dx*dx + dy*dy);
+                if (d>10){
+                    //too far from original location, move the point to dumb location, so it's gonna be ignored
+                    listP1[j+i*(pattern_size.width+1)].x=-1;
+                    listP1[j+i*(pattern_size.width+1)].y=-1;
+                }
+            }
+    }
 
-    cornerSubPix(im, listP1,cv::Size(7,7), cv::Size(1,1), cv::TermCriteria(cv::TermCriteria::COUNT+cv::TermCriteria::EPS,40,0.001));
-
-
-   //(cv::InputArray)*image
-    for (int i=0;i<pattern_size.height;i++)
-        for (int j=0;j<pattern_size.width;j++)
+    //(cv::InputArray)*image
+    for (int i=0;i<pattern_size.height+1;i++)
+        for (int j=0;j<pattern_size.width+1;j++)
         {
-            cv::Point2f p=listP1[j+i*pattern_size.width];
+            cv::Point2f p=listP1[j+i*(pattern_size.width+1)];
             tabX[i][j]=p.x;
             tabY[i][j]=p.y;
         }
-    int res=11;
-    //to store the reconstructed tag
-    CvSize tag_size;    tag_size.height=res;    tag_size.width=res;
-    IplImage* imageRect = cvCreateImage( tag_size, 8, 1 );
-    IplImage* imageDebug= cvCreateImage( cvGetSize(image), 8, 1 );
-    cvCopy( image, imageDebug);
-    IplImage* imageDebugColor= cvCreateImage( cvGetSize(image), 8, 3 );
-    cvCvtColor( image, imageDebugColor, CV_GRAY2BGR );
 
     //recreate a 2D array of quads containting Black and Whites quads for tag decoding
     for (int i=0;i<maxPattern_sizeRow-1;i++)
         for (int j=0;j<maxPattern_sizeColumn-1;j++) {
             for (int k=0;k<4;k++)
-                tabq [i][j].corners[k]=new   CvCBCorner;
+                tabq [i][j].corners[k]=new   CvCBCorner;  //TODO deallocation
             tabq [i][j].corners[0]->pt.x=tabX[i][j];
             tabq [i][j].corners[0]->pt.y=tabY[i][j];
             tabq [i][j].corners[1]->pt.x=tabX[i][j+1];
@@ -3122,42 +2920,95 @@ int mrWriteCorners( CvCBQuad **output_quads, int count, CvSize pattern_size, int
             if ( (tabX[i][j]>NOK) && (tabX[i+1][j]>NOK) && (tabX[i][j+1]>NOK) && (tabX[i+1][j+1]>NOK) &&
                  (tabY[i][j]>NOK) && (tabY[i+1][j]>NOK) && (tabY[i][j+1]>NOK) && (tabY[i+1][j+1]>NOK) ){
                 int nb=1+j+i*(maxPattern_sizeRow-1);
-                int value=determineQuadCode( &tabq [i][j], res,imageDebug,imageRect,true, imageDebugColor,nb);
+                int value=determineQuadCode( &tabq [i][j], res,imageDebug,imageRect,true, imageDebugColor);
                 if (value>=0){
                     cout <<"nb:" << nb;
                     cout <<" pattern  "<< value<< " found " <<endl;
-                    cvShowImage( "reconstructed tag", imageRect);
-                    char name[1000];
-                    sprintf(name,"pictureVis/reconstructedtag_%04d.png",nb );
-                    cvSaveImage(name, imageRect);
+                    if (ShowIntermediateImages){
+                        cvNamedWindow( "reconstructed tag", 1 );
+                        cvShowImage( "reconstructed tag", imageRect);
+                    }
+                    if (SaveIntermediateImagesForDebug){
+                        char name[1000];
+                        sprintf(name,"pictureVis/reconstructedtag_%04d.ppm",nb );
+                        cvSaveImage(name, imageRect);
+                    }
                 }
             }
         }
-    cvShowImage( "all found quads per dilation run", imageDebugColor);
-    cvSaveImage("pictureVis/allFoundQuadsB.png", imageDebugColor);
-    //  if (WaitBetweenImages) cvWaitKey(0);
 
 
-    // Write to the corner matrix size info file
-    cornerInfo << maxPattern_sizeRow<< " " << maxPattern_sizeColumn << endl;
+    //loops copied from mrWriteCorners // TODO: simplifier
+    // Write the corners in increasing order to the output file
+    for(int i = min_row + 1; i < maxPattern_sizeRow + min_row + 1; i++)
+    {
+        for(int j = min_column + 1; j < maxPattern_sizeColumn + min_column + 1; j++)
+        {
+            // Reset the iterator
+            int iter = 1;
+            for(int k = 0; k < count; k++)
+            {
+                for(int l = 0; l < 4; l++)
+                {
+                    if(((output_quads[k])->corners[l]->row == i) && ((output_quads[k])->corners[l]->column == j) )
+                    {
+                        // Only write corners to the output file, which are connected
+                        // i.e. only if iter == 2
+                        if( iter == 2)
+                        {
+                             if (ShowFinalImage){// draw the row and column numbers
+                                char str[255];
+                                sprintf(str,"%i/%i",i,j);
+                                CvFont font;
+                                cvInitFont(&font, CV_FONT_HERSHEY_SIMPLEX, 0.2, 0.2, 0, 1);
+                                CvPoint ptt;
+                                ptt.x = (int) output_quads[k]->corners[l]->pt.x;
+                                ptt.y = (int) output_quads[k]->corners[l]->pt.y;
+                                // Mark central corners with a different color than
+                                // border corners
+                                if ((output_quads[k])->corners[l]->needsNeighbor == false)
+                                {
+                                    cvPutText(imageDebugColor, str, ptt, &font, CV_RGB(0,255,0));
+                                }
+                                else
+                                {
+                                    cvPutText(imageDebugColor, str, ptt, &font, CV_RGB(255,0,0));
+                                }
+                            }
+                        }
+                        // If the iterator is larger than two, this means that more than
+                        // two corners have the same row / column entries. Then some
+                        // linking errors must have occured and we should not use the found
+                        // pattern
+                        if (iter > 2)
+                            return -1;
+                        iter++;
+                    }
+                }
+            }
+
+            // If the respective row / column is non - existent or is a border corner
+            if (iter == 1 || iter == 2)
+            {
+                //TODO SPECIAL PROCESSING
+            }
+        }
+    }
 
 
-    // Close the output files
-    cornersX.close();
-    cornersY.close();
-    cornerInfo.close();
-
-    // check whether enough corners have been found
-    if (corner_count >= min_number_of_corners)
-        internal_found = 1;
-    else
-        internal_found = 0;
 
 
-    // pattern found, or not found?
-    return internal_found;
+    if (ShowFinalImage){
+        cvNamedWindow( "Final Result", 1 );
+        cvShowImage( "Final Result", imageDebugColor);
+        cvWaitKey(0);
+    }
+    if (SaveFinalImage){
+        cvSaveImage("pictureVis/allFoundQuadsB.ppm", imageDebugColor);
+    }
+    //TODO think about a way to return the result
+    return 1;
 }
-
 //===========================================================================
 // END OF FILE
 //===========================================================================

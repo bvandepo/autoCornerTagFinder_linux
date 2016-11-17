@@ -1,0 +1,34 @@
+
+
+//TODO georéférencer la mire relativement aux tag et notamment retrouver l'origine et l'orientation dans mrWriteCorners
+
+sur le coin inférieur droit de ./inputImages/im00-00032.ppm, 
+diverge vers le bords inférieur droit
+
+il garde à tort le coins le pls haut de ./inputImages/im00-00033.ppm
+
+
+
+
+
+comprendre pourquoi certains coins sont numérotés en rouge et donc ignorés alors qu'ils sont près des bords et que je voudrai les garder
+
+voir si cornerSubPix plante moins quand on l'utilise avec 1 points à la fois
+
+ajouter la numerotation sur l'image allFoundQuadsB pour verifier le référencement
+
+
+peut être imprimer les codes X Y O moins carrés pour éviter qu'ils soient détectés comme des quad, ex: ./inputImages/im00-00016.ppm
+----> recapturer images
+
+
+determiner et virer tout ce qui est non déterministe
+
+gérer l'affichage de l'image résultat final dans l'appli
+
+
+faire les traitement indépendamment de la taille des images d'entrée
+
+
+pouvoir configurer si on souhaite que le reférencement soit nécessaire ou non (pas utile pour l'étalonnage des param intrinsèque par ex)
+
