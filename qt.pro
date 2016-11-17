@@ -47,9 +47,16 @@ OPENCV31SYSTEM {
 OPENCV_PATH =/usr/local/
 INCLUDEPATH += $${OPENCV_PATH}/include/
 INCLUDEPATH += $${OPENCV_PATH}/include/opencv2/
-LIBS +=  -L$${OPENCV_PATH}/lib
-LIBS+= -lopencv_core -lopencv_highgui -lopencv_imgproc -lopencv_calib3d -lopencv_imgcodecs -lopencv_videoio
-}
+
+#LIBS +=  -L$${OPENCV_PATH}/lib
+#LIBS+= -lopencv_core -lopencv_highgui -lopencv_imgproc -lopencv_calib3d -lopencv_imgcodecs -lopencv_videoio
+
+LIBS+= `pkg-config --libs opencv`
+#foireux car pkg-config  ajoute -lippicv qui n'est pas installé en pratique
+#LIBS+=-L/usr/local/lib -lopencv_shape -lopencv_stitching -lopencv_objdetect -lopencv_superres -lopencv_videostab -lopencv_calib3d -#lopencv_features2d -lopencv_highgui -lopencv_videoio -lopencv_imgcodecs -lopencv_video -lopencv_photo -lopencv_ml -lopencv_imgproc -#lopencv_flann -lopencv_viz -lopencv_core
+
+
+} 
 
 INCLUDEPATH += /usr/include/eigen3/
 INCLUDEPATH += ./
